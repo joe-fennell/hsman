@@ -99,7 +99,7 @@ def logger():
 
 def _check_user_installed():
     if not os.path.isdir(USER_PATH):
-        os.makedirs(os.path.join(os.environ['HOME'], '.georis'))
+        os.makedirs(os.path.join(os.environ['HOME'], '.hsman'))
         logging.debug('generated user .hsman dir')
 
     if not os.path.isfile(CONFIG_PATH):
@@ -124,7 +124,7 @@ def _logging_params():
 
 
 INSTALL_PATH = os.path.abspath(os.path.dirname(__file__))
-USER_PATH = os.path.join(os.environ['HOME'], '.hsman')
+USER_PATH = os.path.abspath(os.path.join(os.environ['HOME'], '.hsman'))
 CONFIG_PATH = os.path.join(USER_PATH, 'config.yaml')
 CONFIG = get_config()
-DATA_PATH = CONFIG['hsman_data_path']
+DATA_PATH = os.path.abspath(os.path.expanduser(CONFIG['hsman_data_path']))
