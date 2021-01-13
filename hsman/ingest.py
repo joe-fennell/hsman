@@ -1,7 +1,8 @@
 """
 Handles data conversion and disk storage
 """
-
+import datetime
+import functools
 import logging
 import numpy as np
 import os
@@ -31,13 +32,21 @@ def ingest(file_list, dataset_name, target_dtype, target_file_size=2e9):
     dst = _make_dataset_folder(dataset_name)
     dst_data = os.path.join(dst, 'DATA')
     # combine files into a VRT
-    vrt_path = _make_vrt(file_list, dst)
+    vrt_path = _make_vrt(file_list, os.path.join(dst, 'METADATA'))
+    logging.debug('VRT path: {}'.format(vrt_path))
     ds = xarray.open_rasterio(vrt_path)
     logging.info('Generated VRT of size {}'.format(ds.shape))
     # metadata attributes often not preserved so get these from files
     new_attrs = _merge_attrs(
         [xarray.open_rasterio(x, cache=False).attrs for x in file_list]
     )
+    new_attrs['_FillValue'] = 0
+    # get the capture starttime of first tile
+    ast = np.min([_get_collect_time(x) for x in file_list])
+    new_attrs['acquisition_start_time'] = ast.isoformat()
+    # retrieve wavelength dimension and add to dataset
+    ds = ds.assign_coords({'wavelength': ('band',
+                                          _get_common_wavelengths(file_list))})
     # generate correct tile index sets
     if target_dtype in ['bool']:
         tile_slices = _make_tile_slices(ds, target_file_size, 1)
@@ -54,34 +63,110 @@ def ingest(file_list, dataset_name, target_dtype, target_file_size=2e9):
     elif target_dtype in ['float64', 'uint64', 'int32']:
         tile_slices = _make_tile_slices(ds, target_file_size, 64)
 
-    logging.info('Starting processing {} tiles'.format(len(tile_slices)))
+    logging.info('Processing {} tiles'.format(len(tile_slices)))
     # iterate tile slice indices
     file_number = 1
     for idxs in tile_slices:
-        logging.info(idxs)
+        logging.debug(idxs)
         tile = ds.isel(x=idxs[0], y=idxs[1])
-        logging.info('Checking tile for data...')
+        logging.debug('Checking tile not empty')
         _data = bool(_has_data(tile))
-        logging.info(_data)
+        logging.debug(_data)
         if _data:
-            logging.info('Tile contains data. Writing to disk...')
+            logging.info('Writing tile {} to disk...'.format(file_number))
             # # update attrs twice to guarantee are retained in dataarray and
             # # dataset
             tile.attrs = new_attrs
-            tile.attrs['_FillValue'] = 0
-            tile = tile.to_dataset(name='reflectance').astype(target_dtype)
-            tile.attrs = new_attrs
-            tile.attrs['_FillValue'] = 0
-            tile.to_netcdf(os.path.join(dst_data,
-                                        dataset_name+'_{}.nc'.format(
-                                            file_number
-                                        )))
+            # add wavelength coord
+            _tile = tile.to_dataset(name='reflectance').astype(target_dtype)
+            _tile.attrs = new_attrs
+            _tile.to_netcdf(os.path.join(dst_data,
+                                         dataset_name+'_{}.nc'.format(
+                                             file_number
+                                             )))
             # # update tile number and logging
-            logging.info('{} files generated'.format(file_number))
             file_number += 1
         else:
             logging.info('Tile has no data. Skipping...')
-    logging.info('All files generated for dataset {}'.format(dataset_name))
+    logging.info('{} files generated for dataset {}'.format(file_number-1,
+                                                            dataset_name))
+
+
+def _get_collect_time(filename):
+    """
+    Parameters
+    ----------
+    filename : str
+        path to raster
+    """
+    def _estimate_collect_time(filename):
+        """
+        Parameters
+        ----------
+        filename : str
+            filename or path of file
+        """
+        fname = os.path.basename(filename)
+        date = fname.split('_')[0].split('-')[2]
+        year = int(date[:4])
+        month = int(date[4:6])
+        day = int(date[6:])
+        return datetime.datetime(year, month, day, 0, 0, 0).isoformat()
+
+    attrs = xarray.open_rasterio(filename, cache=False).attrs
+    try:
+        d = attrs['acquisition_date'].split('-')
+    except KeyError:
+        logging.debug('acquisition_date not in metadata')
+        return _estimate_collect_time(filename)
+
+    try:
+        t = attrs['acquisition_start_time'].split(':')
+    except KeyError:
+        logging.debug('acquisition_start_time not in metadata')
+        return _estimate_collect_time(filename)
+    d = [int(x) for x in d]
+    t = [int(x) for x in t]
+    return datetime.datetime(*d, *t)
+
+
+def _get_common_wavelengths(file_paths):
+    # returns only wavelengths present in all
+    wlens = _get_all_wavelengths(file_paths)
+    return functools.reduce(np.intersect1d, wlens).round(0)
+
+
+def _get_all_wavelengths(file_paths):
+    """
+    Returns a list of wavelength dims for all files file_paths
+
+    Parameters
+    ----------
+    file_paths : list
+        iterable of paths to valid rasterio-compatible files.
+
+    Returns
+    -------
+    wavelengths : list
+    """
+    def _get_wavelengths(band_names):
+        bn = band_names.split(',')
+        try:
+            bn = [float(x.split(' ')[0], 0) for x in bn]
+        except ValueError:
+            bn = [float(x.split(' ')[1][4:-1], 0) for x in bn]
+        return np.array(bn)
+
+    wlens = []
+    for file in file_paths:
+        ar = xarray.open_rasterio(file, cache=False)
+        try:
+            # usually the wavelength dimension is available
+            wlens.append(ar.wavelength.values)
+        except AttributeError:
+            # sometimes this is missing so need to parse from band names
+            wlens.append(_get_wavelengths(ar.attrs['band_names']))
+    return wlens
 
 
 def _has_data(dataset, nodataval=0):
@@ -133,12 +218,51 @@ def _make_tile_slices(dataset, target_size=1e9, value_size=16):
     return slices
 
 
+def _idx_common(wlen_list):
+    def _to_cmd(ar):
+        out = []
+        for v in ar:
+            out.append('-b')
+            out.append(str(v))
+        return out
+    # function generates the band args to retrieve only bands common to
+    # whole dataset
+    # rounds all the wavelength coords to nearest integer value
+    rounded = [x.round(0) for x in wlen_list]
+    common = functools.reduce(np.intersect1d, rounded)
+    out = []
+    for wl in rounded:
+        _, idxs, _ = np.intersect1d(wl, common, return_indices=True)
+        # add 1 to go to raster bands
+        idxs += 1
+        # every other value is the -b band cmd
+        out.append(_to_cmd(idxs))
+    return out
+
+
 def _make_vrt(file_list, dst):
+    # build a VRT for each file with a subset of bands contained in all
+    bands = _idx_common(_get_all_wavelengths(file_list))
+    sub_vrt_files = []
+    for i in range(len(bands)):
+        dst_path = os.path.join(dst, '_merged_{}.vrt'.format(i))
+        cmd = ['gdalbuildvrt', dst_path]
+        cmd += [file_list[i]]
+        cmd += bands[i]
+        logging.debug('building sub_vrt {}/{}'.format(i, len(bands)))
+        logging.debug(cmd)
+        try:
+            subprocess.check_output(cmd)
+        except subprocess.CalledProcessError as e:
+            raise e
+        sub_vrt_files.append(dst_path)
+
     # build a vrt from file_list and make a file
     dst_path = os.path.join(dst, 'merged.vrt')
     cmd = ['gdalbuildvrt', dst_path]
-    cmd += file_list
+    cmd += sub_vrt_files
     # Run with subprocess
+    logging.debug('building merged_vrt'.format())
     subprocess.check_call(cmd)
     return os.path.abspath(dst_path)
 
