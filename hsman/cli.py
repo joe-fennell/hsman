@@ -78,22 +78,27 @@ def ingest(directory):
     for recipe_name, recipe in recipes.items():
         logging.info('Searching for files matching the {} recipe...'.format(
             recipe_name))
-        _all_data = scrape.find_dataset_files(target_dir,
-                                              recipe_name)['data_path']
-        # iterate all missions found
-        logging.info('Found {} missions with matching files'.format(
-            len(_all_data)))
-        for mission_name, data_files in _all_data.items():
-            logging.info('Processing recipe {} for mission {}...'.format(
-                recipe_name, mission_name
-            ))
-            coverage_id = scrape.generate_coverage_id(mission_name,
-                                                      recipe_name)
-            if recipe['ingest_type'] == 'hsi':
-                _ingest.ingest_hsi(data_files, coverage_id, recipe['dtype'])
+        try:
+            _all_data = scrape.find_dataset_files(target_dir,
+                                                  recipe_name)['data_path']
+            # iterate all missions found
+            logging.info('Found {} missions with matching files'.format(
+                len(_all_data)))
+            for mission_name, data_files in _all_data.items():
+                logging.info('Processing recipe {} for mission {}...'.format(
+                    recipe_name, mission_name
+                ))
+                coverage_id = scrape.generate_coverage_id(mission_name,
+                                                          recipe_name)
+                if recipe['ingest_type'] == 'hsi':
+                    _ingest.ingest_hsi(data_files, coverage_id,
+                                       recipe['dtype'])
 
-            if recipe['ingest_type'] == 'image':
-                _ingest.ingest_image(data_files, coverage_id)
+                if recipe['ingest_type'] == 'image':
+                    _ingest.ingest_image(data_files, coverage_id)
+        except ValueError:
+            logging.info('No datasets found matching {} template'.format(
+                recipe_name))
 
 
 @hsman.command()

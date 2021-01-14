@@ -18,6 +18,7 @@ setuptools.setup(
     include_package_data=True,
     install_requires=[
           'xarray',
+          'rasterio',
           'boto3',
           'pyyaml',
           'numpy',
