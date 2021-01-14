@@ -95,7 +95,10 @@ def ingest(directory):
                                        recipe['dtype'], recipe['tile_size'])
 
                 if recipe['ingest_type'] == 'image':
-                    _ingest.ingest_image(data_files, coverage_id)
+                    if len(data_files) == 1:
+                        _ingest.ingest_image(data_files[0], coverage_id)
+                    else:
+                        logging.warn('Could not ingest dataset as more than 1 file')
         except ValueError:
             logging.info('No datasets found matching {} template'.format(
                 recipe_name))
