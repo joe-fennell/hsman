@@ -9,6 +9,7 @@ import yaml
 
 
 def get_datasets():
+    _check_data_path()
     _datasets = os.listdir(DATA_PATH)
     datasets = {}
     for obj in _datasets:
@@ -112,6 +113,11 @@ def update_config(updates):
     new_config = config.update(updates)
     with open(CONFIG_PATH, 'w') as file:
         return yaml.dump(new_config, file, Loader=yaml.FullLoader)
+
+
+def _check_data_path():
+    if not os.path.isdir(DATA_PATH):
+        os.makedirs(DATA_PATH)
 
 
 def _check_user_installed():
