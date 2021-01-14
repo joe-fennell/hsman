@@ -92,7 +92,7 @@ def ingest(directory):
                                                           recipe_name)
                 if recipe['ingest_type'] == 'hsi':
                     _ingest.ingest_hsi(data_files, coverage_id,
-                                       recipe['dtype'])
+                                       recipe['dtype'], recipe['tile_size'])
 
                 if recipe['ingest_type'] == 'image':
                     _ingest.ingest_image(data_files, coverage_id)

@@ -11,7 +11,7 @@ raster_dataset_recipes:
     data_flag: VNIR_1800_SN00826_quac_specPol_rect
     data_suffix: img
     dtype: uint16
-    tile_size: 1e9
+    tile_size: 4e9
     ingest_type: hsi
   # files from the Hyspex VNIR 1800
   SWIR_aerial:
@@ -20,7 +20,7 @@ raster_dataset_recipes:
     data_flag: SWIR_384me_SN3104_quac_specPol_rect
     data_suffix: img
     dtype: uint16
-    tile_size: 1e9
+    tile_size: 4e9
     ingest_type: hsi
   # RGB files generated with Correlator3D
   RGB_aerial:
