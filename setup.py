@@ -23,8 +23,7 @@ setuptools.setup(
           'numpy',
           'dask',
           'Click',
-          'netcdf4',
-          'gdal'
+          'netcdf4'
       ],
     entry_points='''
         [console_scripts]
