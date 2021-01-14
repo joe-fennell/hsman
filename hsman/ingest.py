@@ -13,6 +13,7 @@ import shutil
 from .config import DATA_PATH, logger
 logger()
 
+
 def ingest_image(file_path, dataset_name):
     """
     Ingest a single image file (e.g. tif)

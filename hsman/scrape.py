@@ -3,7 +3,6 @@ Tools for preprocessing datasets prior to ingestion
 """
 from .config import get_config
 import os
-import xarray
 
 
 def find_dataset_files(dir, recipe_name, config=None):

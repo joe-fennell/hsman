@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import click
-from hsman import scrape, config, ingest
+from hsman import scrape, config
+from hsman import ingest as _ingest
 import logging
 import os
 
@@ -32,7 +33,7 @@ def hsman():
     config.logger()
 
 
-@georis.command()
+@hsman.command()
 def init():
     """
     Initialises the required files and folders needed for georis. This should
@@ -43,7 +44,7 @@ def init():
     logging.info('GeoRIS initialised')
 
 
-@georis.command()
+@hsman.command()
 @click.argument('directory',
                 type=click.Path('rb', file_okay=False,
                                 resolve_path=True))
@@ -89,13 +90,13 @@ def ingest(directory):
             coverage_id = scrape.generate_coverage_id(mission_name,
                                                       recipe_name)
             if recipe['ingest_type'] == 'hsi':
-                ingest.ingest_hsi(data_files, coverage_id, recipe['dtype'])
+                _ingest.ingest_hsi(data_files, coverage_id, recipe['dtype'])
 
             if recipe['ingest_type'] == 'image':
-                ingest.ingest_image(data_files, coverage_id)
+                _ingest.ingest_image(data_files, coverage_id)
 
 
-@georis.command()
+@hsman.command()
 def clean():
     """
     Removes empty datasets
