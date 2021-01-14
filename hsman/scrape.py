@@ -48,40 +48,6 @@ def find_dataset_files(dir, recipe_name, config=None):
         return {'data_path': data_matches}
 
 
-def get_CRS(filepaths):
-    """
-    Returns a common CRS URL fragment for all files. Will raise a ValueError
-    if not all files have the same CRS
-
-    Parameters
-    ----------
-    filepaths : iterable
-        list of filepaths with same CRS
-
-    Returns
-    -------
-    CRS_fragment : str
-        Coordinate Reference System fragment compatible with petascope
-    """
-    def get_crs(src):
-        try:
-            ds = xarray.open_rasterio(src, cache=False)
-            crs = ds.attrs['crs']
-        # if already a netcdf need to use open dataset instead
-        except KeyError:
-            ds = xarray.open_dataset(src, cache=False)
-            crs = ds.attrs['crs']
-        if 'epsg' in crs:
-            return crs
-        else:
-            raise ValueError('CRS not in required EPSG format')
-
-    crss = [get_crs(x) for x in filepaths]
-    if not all([crss[0] == x for x in crss]):
-        raise ValueError('Not all files have the same CRS')
-    return crss[0]
-
-
 def generate_coverage_id(dataset_name, recipe_name):
     """
     Generate a coverage ID from dataset and recipe name

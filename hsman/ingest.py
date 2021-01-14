@@ -8,14 +8,30 @@ import numpy as np
 import os
 import xarray
 import subprocess
+import shutil
 
 from .config import DATA_PATH, logger
 logger()
 
-
-def ingest(file_list, dataset_name, target_dtype, target_file_size=2e9):
+def ingest_image(file_path, dataset_name):
     """
-    Run the ingestion script on a list of files
+    Ingest a single image file (e.g. tif)
+    """
+    logging.info('Ingesting {}'.format(dataset_name))
+    dst = _make_dataset_folder(dataset_name)
+    new_fpath = os.path.join(dst,
+                             'DATA',
+                             os.path.basename(file_path))
+    # move to directory
+    shutil.copyfile(file_path, new_fpath)
+    # change permissions to read only
+    os.chmod(new_fpath, 0o555)
+    logging.info('1 file generated for dataset {}'.format(dataset_name))
+
+
+def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
+    """
+    Run the ingestion script on a list of files with HSI-type data.
 
     Parameters
     ----------
@@ -80,10 +96,11 @@ def ingest(file_list, dataset_name, target_dtype, target_file_size=2e9):
             # add wavelength coord
             _tile = tile.to_dataset(name='reflectance').astype(target_dtype)
             _tile.attrs = new_attrs
-            _tile.to_netcdf(os.path.join(dst_data,
-                                         dataset_name+'_{}.nc'.format(
-                                             file_number
-                                             )))
+            _tile_path = os.path.join(dst_data, dataset_name+'_{}.nc'.format(
+                file_number))
+            _tile.to_netcdf(_tile_path)
+            # change to read only for all users
+            os.chmod(_tile_path, 0o555)
             # # update tile number and logging
             file_number += 1
         else:
@@ -92,6 +109,7 @@ def ingest(file_list, dataset_name, target_dtype, target_file_size=2e9):
                                                             dataset_name))
 
 
+# private funcs
 def _get_collect_time(filename):
     """
     Parameters

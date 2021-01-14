@@ -12,6 +12,7 @@ raster_dataset_recipes:
     data_suffix: img
     dtype: uint16
     tile_size: 1e9
+    ingest_type: hsi
   # files from the Hyspex VNIR 1800
   SWIR_aerial:
     name: SWIR_aerial
@@ -20,26 +21,24 @@ raster_dataset_recipes:
     data_suffix: img
     dtype: uint16
     tile_size: 1e9
+    ingest_type: hsi
   # RGB files generated with Correlator3D
   RGB_aerial:
     name: RGB_aerial
     data_flag: IXA180_mos
     data_suffix: tif
-    dtype: uint16
-    tile_size: 1e9
+    ingest_type: image
   # DSM files generated with Correlator3D
   DSM_aerial:
     name: DSM_aerial
     data_flag: IXA180_dsm
     data_suffix: tif
-    dtype: uint16
-    tile_size: 1e9
+    ingest_type: image
   # DTM files generated with Correlator3D
   DTM_aerial:
     name: DTM_aerial
     data_flag: IXA180_dtm
     data_suffix: tif
-    dtype: uint16
-    tile_size: 1e9
+    ingest_type: image
 # logging config
 logging_level: logging.INFO

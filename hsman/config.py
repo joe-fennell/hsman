@@ -8,6 +8,18 @@ import shutil
 import yaml
 
 
+def get_datasets():
+    _datasets = os.listdir(DATA_PATH)
+    datasets = {}
+    for obj in _datasets:
+        ds_path = os.path.join(DATA_PATH, obj)
+        # if a directory and contains DATA dir
+        if os.path.isdir(ds_path) and os.path.exists(os.path.join(ds_path,
+                                                                  'DATA')):
+            datasets[obj] = ds_path
+    return datasets
+
+
 def get_config(config=None):
     """
     Loads the config, by default available in the install directory
@@ -32,6 +44,18 @@ def get_config(config=None):
             return yaml.load(file, Loader=yaml.FullLoader)
 
 
+def logger():
+    logging.root.handlers = []
+    level, path = _logging_params()
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(path),
+            logging.StreamHandler()
+            ])
+
+
 def reset_config():
     """
     Resets config to default version
@@ -41,30 +65,20 @@ def reset_config():
     _create_default_config()
 
 
-def remove_all_logs():
+def remove_empty_datasets():
     """
-    Removes all user generated logfiles
+    Remove any directory in DATA_PATH that doesn't have any data files
     """
-    try:
-        path = os.path.join(USER_PATH, 'georis.log')
-        os.remove(path)
-    except FileNotFoundError:
-        logging.debug('No log file to delete')
-
-
-def update_config(updates):
-    """
-    Updates the config file with a new version of the config_dict
-
-    Parameters
-    ----------
-    updates : dict
-        dictionary with config parameters to add/replace
-    """
-    config = get_config()
-    new_config = config.update(updates)
-    with open(CONFIG_PATH, 'w') as file:
-        return yaml.dump(new_config, file, Loader=yaml.FullLoader)
+    datasets = get_datasets()
+    for ds in datasets.values():
+        contents = os.listdir(os.path.join(ds, 'DATA'))
+        try:
+            contents.remove('.DS_Store')
+        except ValueError:
+            pass
+        if len(contents) == 0:
+            shutil.rmtree(ds)
+            logging.debug('Removing {}'.format(ds))
 
 
 def set_collection_path(new_path):
@@ -85,16 +99,19 @@ def set_collection_path(new_path):
     update_config({'hsman_data_path': os.path.abspath(new_path)})
 
 
-def logger():
-    logging.root.handlers = []
-    level, path = _logging_params()
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(path),
-            logging.StreamHandler()
-            ])
+def update_config(updates):
+    """
+    Updates the config file with a new version of the config_dict
+
+    Parameters
+    ----------
+    updates : dict
+        dictionary with config parameters to add/replace
+    """
+    config = get_config()
+    new_config = config.update(updates)
+    with open(CONFIG_PATH, 'w') as file:
+        return yaml.dump(new_config, file, Loader=yaml.FullLoader)
 
 
 def _check_user_installed():
