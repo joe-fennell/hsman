@@ -45,7 +45,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         string describing numpy dtype
 
     """
-    with dask.config.set(num_workers=8):
+    with dask.config.set(num_workers=3):
         logging.info('Ingesting {}'.format(dataset_name))
         # make folder for storing outputs
         dst = _make_dataset_folder(dataset_name)
