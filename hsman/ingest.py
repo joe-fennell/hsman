@@ -53,7 +53,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # combine files into a VRT
         vrt_path = _make_vrt(file_list, os.path.join(dst, 'METADATA'))
         logging.debug('VRT path: {}'.format(vrt_path))
-        ds = xarray.open_rasterio(vrt_path, chunks=600)
+        ds = xarray.open_rasterio(vrt_path, chunks=2000)
         logging.info('Generated VRT of size {}'.format(ds.shape))
         # metadata attributes often not preserved so get these from files
         new_attrs = _merge_attrs(
