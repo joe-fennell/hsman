@@ -92,8 +92,6 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
             _data = bool(_has_data(tile))
             logging.debug(_data)
             if _data:
-                logging.info('Writing tile {} to scratch...'.format(
-                    file_number))
                 # update attrs twice to guarantee are retained in dataarray
                 # and dataset
                 tile.attrs = new_attrs
@@ -106,6 +104,8 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
                 _tile_temp = os.path.join(SCRATCH_PATH,
                                           dataset_name+'_{}.nc'.format(
                                               file_number))
+                logging.info('Writing tile {} to scratch...'.format(
+                    file_number))
                 _tile.to_netcdf(_tile_temp)
                 logging.info('Moving tile {} to disk...'.format(
                     file_number))
