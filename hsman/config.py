@@ -146,8 +146,28 @@ def _logging_params():
     return eval(level), os.path.join(USER_PATH, 'hsman.log')
 
 
+# post install (requires CONFIG to be loaded)
+def _make_scratch():
+    try:
+        sp = CONFIG['scratch_directory']
+    except KeyError:
+        # linux default
+        sp = ['/tmp/.hsman']
+    # convert to list
+    if type(sp) is not list:
+        sp = [sp]
+    for s in sp:
+        try:
+            os.makedirs(s, exist_ok=True)
+            break
+        except PermissionError:
+            continue
+    return s
+
+
 INSTALL_PATH = os.path.abspath(os.path.dirname(__file__))
 USER_PATH = os.path.abspath(os.path.join(os.environ['HOME'], '.hsman'))
 CONFIG_PATH = os.path.join(USER_PATH, 'config.yaml')
 CONFIG = get_config()
 DATA_PATH = os.path.abspath(os.path.expanduser(CONFIG['hsman_data_path']))
+SCRATCH_PATH = _make_scratch()

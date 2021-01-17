@@ -11,7 +11,7 @@ import xarray
 import subprocess
 import shutil
 
-from .config import DATA_PATH, logger
+from .config import DATA_PATH, logger, SCRATCH_PATH
 logger()
 
 
@@ -45,7 +45,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         string describing numpy dtype
 
     """
-    with dask.config.set(num_workers=3):
+    with dask.config.set(num_workers=8):
         logging.info('Ingesting {}'.format(dataset_name))
         # make folder for storing outputs
         dst = _make_dataset_folder(dataset_name)
@@ -53,7 +53,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # combine files into a VRT
         vrt_path = _make_vrt(file_list, os.path.join(dst, 'METADATA'))
         logging.debug('VRT path: {}'.format(vrt_path))
-        ds = xarray.open_rasterio(vrt_path).persist()
+        ds = xarray.open_rasterio(vrt_path, chunks=2000)
         logging.info('Generated VRT of size {}'.format(ds.shape))
         # metadata attributes often not preserved so get these from files
         new_attrs = _merge_attrs(
@@ -81,7 +81,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # 64 bit formats
         elif target_dtype in ['float64', 'uint64', 'int32']:
             tile_slices = _make_tile_slices(ds, target_file_size, 64)
-
+        ds = ds.astype(target_dtype)
         logging.info('Processing {} tiles'.format(len(tile_slices)))
         # iterate tile slice indices
         file_number = 1
@@ -92,18 +92,24 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
             _data = bool(_has_data(tile))
             logging.debug(_data)
             if _data:
-                logging.info('Writing tile {} to disk...'.format(file_number))
-                # # update attrs twice to guarantee are retained in dataarray and
-                # # dataset
+                logging.info('Writing tile {} to scratch...'.format(
+                    file_number))
+                # update attrs twice to guarantee are retained in dataarray
+                # and dataset
                 tile.attrs = new_attrs
                 # add wavelength coord
-                _tile = tile.to_dataset(name='reflectance').astype(
-                    target_dtype)
+                _tile = tile.to_dataset(name='reflectance')
                 _tile.attrs = new_attrs
                 _tile_path = os.path.join(dst_data,
                                           dataset_name+'_{}.nc'.format(
                                               file_number))
-                _tile.to_netcdf(_tile_path)
+                _tile_temp = os.path.join(SCRATCH_PATH,
+                                          dataset_name+'_{}.nc'.format(
+                                              file_number))
+                _tile.to_netcdf(_tile_temp)
+                logging.info('Moving tile {} to disk...'.format(
+                    file_number))
+                shutil.move(_tile_temp, _tile_path)
                 # change to read only for all users
                 os.chmod(_tile_path, 0o555)
                 # # update tile number and logging

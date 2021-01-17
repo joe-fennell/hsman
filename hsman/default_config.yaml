@@ -1,6 +1,7 @@
 config_name: default
 # Path to the data write directory
 hsman_data_path: ~/hsman/
+scratch_directory: ['/scratch.local/jf9942/hsman']
 # schema for finding raster data in a 2ExcelGeo directory. Each data type will
 # be ingested into a separate coverage.
 raster_dataset_recipes:
