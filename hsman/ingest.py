@@ -65,8 +65,9 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         ast = np.min([_get_collect_time(x) for x in file_list])
         new_attrs['acquisition_start_time'] = ast.isoformat()
         # retrieve wavelength dimension and add to dataset
-        ds = ds.assign_coords({'wavelength':
-            ('band', _get_common_wavelengths(file_list))})
+        ds = ds.assign_coords({'wavelength': ('band',
+                                              _get_common_wavelengths(
+                                                  file_list))})
         # generate correct tile index sets
         # if target_dtype in ['bool']:
         #     tile_slices = _make_tile_slices(ds, target_file_size, 1)
@@ -88,7 +89,6 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # iterate tile slice indices
         tile_slices = np.arange(len(ds.band))
         logging.info('Processing {} tiles'.format(len(tile_slices)))
-        file_number = 1
         for idx in tile_slices:
             # logging.debug(idxs)
             # tile = ds.isel(x=idxs[0], y=idxs[1])
@@ -108,24 +108,18 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
             _tile = tile.to_dataset(name='reflectance')
             _tile.attrs = new_attrs
             _tile_path = os.path.join(dst_data,
-                                      dataset_name+'_{}.nc'.format(
-                                          file_number))
+                                      dataset_name+'_{}.nc'.format(idx+1))
             _tile_temp = os.path.join(SCRATCH_PATH,
-                                      dataset_name+'_{}.nc'.format(
-                                          file_number))
-            logging.info('Writing tile {} to scratch...'.format(
-                file_number))
+                                      dataset_name+'_{}.nc'.format(idx+1))
+            logging.info('Writing tile {} to scratch...'.format(idx+1))
             _tile.to_netcdf(_tile_temp)
-            logging.info('Moving tile {} to disk...'.format(
-                file_number))
+            logging.info('Moving tile {} to disk...'.format(idx+1))
             shutil.move(_tile_temp, _tile_path)
             # change to read only for all users
             os.chmod(_tile_path, 0o555)
-            # # update tile number and logging
-            file_number += 1
             # else:
             #     logging.info('Tile has no data. Skipping...')
-        logging.info('{} files generated for dataset {}'.format(file_number-1,
+        logging.info('{} files generated for dataset {}'.format(idx,
                                                                 dataset_name))
 
 
