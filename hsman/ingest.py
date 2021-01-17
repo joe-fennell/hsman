@@ -82,14 +82,17 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         elif target_dtype in ['float64', 'uint64', 'int32']:
             tile_slices = _make_tile_slices(ds, target_file_size, 64)
         ds = ds.astype(target_dtype)
-        logging.info('Processing {} tiles'.format(len(tile_slices)))
+        logging.info('Loading first layer into memory')
+        # read test layer into memory
+        test_layer = ds.isel(band=0).compute()
         # iterate tile slice indices
+        logging.info('Processing {} tiles'.format(len(tile_slices)))
         file_number = 1
         for idxs in tile_slices:
             logging.debug(idxs)
             tile = ds.isel(x=idxs[0], y=idxs[1])
             logging.info('Checking tile not empty')
-            _data = bool(_has_data(tile))
+            _data = bool(_has_data(test_layer.isel(x=idxs[0], y=idxs[1])))
             logging.debug(_data)
             if _data:
                 logging.info('Processing tile')
@@ -202,7 +205,7 @@ def _get_all_wavelengths(file_paths):
 def _has_data(dataset, nodataval=0):
     # Checks the array has more than no data vals
     # use only the first 2 bands
-    return (dataset.isel(band=slice(0, 2)) != nodataval).any().compute()
+    return (dataset != nodataval).any().compute()
 
 
 def _make_dataset_folder(name):
