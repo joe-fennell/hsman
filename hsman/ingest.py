@@ -96,7 +96,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
             logging.debug(_data)
             if _data:
                 logging.info('Processing tile')
-                tile = tile.chunk((200, 1000, 1000))
+                tile = tile.chunk((200, 2000, 2000))
                 tile = tile.astype(target_dtype)
                 # update attrs twice to guarantee are retained in dataarray
                 # and dataset
