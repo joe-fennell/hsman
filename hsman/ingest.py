@@ -45,6 +45,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         string describing numpy dtype
 
     """
+    os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
     with dask.config.set(num_workers=8):
         logging.info('Ingesting {}'.format(dataset_name))
         # make folder for storing outputs
@@ -53,7 +54,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # combine files into a VRT
         vrt_path = _make_vrt(file_list, os.path.join(dst, 'METADATA'))
         logging.debug('VRT path: {}'.format(vrt_path))
-        ds = xarray.open_rasterio(vrt_path, chunks=(1, 6000, 6000))
+        ds = xarray.open_rasterio(vrt_path, chunks=(1, 10000, 10000))
         logging.info('Generated VRT of size {}'.format(ds.shape))
         # metadata attributes often not preserved so get these from files
         new_attrs = _merge_attrs(
