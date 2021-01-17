@@ -46,7 +46,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
 
     """
     os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
-    with dask.config.set(num_workers=8):
+    with dask.config.set(num_workers=4):
         logging.info('Ingesting {}'.format(dataset_name))
         # make folder for storing outputs
         dst = _make_dataset_folder(dataset_name)
@@ -54,7 +54,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # combine files into a VRT
         vrt_path = _make_vrt(file_list, os.path.join(dst, 'METADATA'))
         logging.debug('VRT path: {}'.format(vrt_path))
-        ds = xarray.open_rasterio(vrt_path, chunks=(1, 10000, 10000))
+        ds = xarray.open_rasterio(vrt_path, chunks=(200, 5000, 5000))
         logging.info('Generated VRT of size {}'.format(ds.shape))
         # metadata attributes often not preserved so get these from files
         new_attrs = _merge_attrs(
@@ -67,63 +67,78 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # retrieve wavelength dimension and add to dataset
         ds = ds.assign_coords({'wavelength':
             ('band', _get_common_wavelengths(file_list))})
+
+        ds = ds.astype(target_dtype)
+        ds.attrs = new_attrs
+        out = ds.to_dataset(name='reflectance')
+        out.attrs = new_attrs
+
+        _temp_path = os.path.join(SCRATCH_PATH,
+                                  dataset_name+'.nc')
+
+        _tile_path = os.path.join(dst_data,
+                                  dataset_name+'.nc')
+        out.to_netcdf(_temp_path)
+        shutil.move(_temp_path, _tile_path)
+        # change to read only for all users
+        os.chmod(_tile_path, 0o555)
         # generate correct tile index sets
-        if target_dtype in ['bool']:
-            tile_slices = _make_tile_slices(ds, target_file_size, 1)
-        # 8 bit formats
-        if target_dtype in ['uint8', 'int8']:
-            tile_slices = _make_tile_slices(ds, target_file_size, 8)
-        # 16 bit formats
-        if target_dtype in ['float16', 'uint16', 'int16']:
-            tile_slices = _make_tile_slices(ds, target_file_size, 16)
-        # 32 bit formats
-        elif target_dtype in ['float32', 'uint32', 'int32']:
-            tile_slices = _make_tile_slices(ds, target_file_size, 32)
-        # 64 bit formats
-        elif target_dtype in ['float64', 'uint64', 'int32']:
-            tile_slices = _make_tile_slices(ds, target_file_size, 64)
-        logging.info('Loading first layer into memory')
-        # read test layer into memory
-        test_layer = ds.isel(band=0).compute()
+        # if target_dtype in ['bool']:
+        #     tile_slices = _make_tile_slices(ds, target_file_size, 1)
+        # # 8 bit formats
+        # if target_dtype in ['uint8', 'int8']:
+        #     tile_slices = _make_tile_slices(ds, target_file_size, 8)
+        # # 16 bit formats
+        # if target_dtype in ['float16', 'uint16', 'int16']:
+        #     tile_slices = _make_tile_slices(ds, target_file_size, 16)
+        # # 32 bit formats
+        # elif target_dtype in ['float32', 'uint32', 'int32']:
+        #     tile_slices = _make_tile_slices(ds, target_file_size, 32)
+        # # 64 bit formats
+        # elif target_dtype in ['float64', 'uint64', 'int32']:
+        #     tile_slices = _make_tile_slices(ds, target_file_size, 64)
+        # logging.info('Loading first layer into memory')
+        # # read test layer into memory
+        # test_layer = ds.isel(band=0).compute()
         # iterate tile slice indices
-        logging.info('Processing {} tiles'.format(len(tile_slices)))
-        file_number = 1
-        for idxs in tile_slices:
-            logging.debug(idxs)
-            tile = ds.isel(x=idxs[0], y=idxs[1])
-            logging.info('Checking tile not empty')
-            _data = bool(_has_data(test_layer.isel(x=idxs[0], y=idxs[1])))
-            logging.debug(_data)
-            if _data:
-                logging.info('Processing tile')
-                tile = tile.chunk((200, 2000, 2000))
-                tile = tile.astype(target_dtype)
-                # update attrs twice to guarantee are retained in dataarray
-                # and dataset
-                tile.attrs = new_attrs
-                # add wavelength coord
-                _tile = tile.to_dataset(name='reflectance')
-                _tile.attrs = new_attrs
-                _tile_path = os.path.join(dst_data,
-                                          dataset_name+'_{}.nc'.format(
-                                              file_number))
-                _tile_temp = os.path.join(SCRATCH_PATH,
-                                          dataset_name+'_{}.nc'.format(
-                                              file_number))
-                logging.info('Writing tile {} to scratch...'.format(
-                    file_number))
-                _tile.to_netcdf(_tile_temp)
-                logging.info('Moving tile {} to disk...'.format(
-                    file_number))
-                shutil.move(_tile_temp, _tile_path)
-                # change to read only for all users
-                os.chmod(_tile_path, 0o555)
-                # # update tile number and logging
-                file_number += 1
-            else:
-                logging.info('Tile has no data. Skipping...')
-        logging.info('{} files generated for dataset {}'.format(file_number-1,
-                                                                dataset_name))
+        # logging.info('Processing {} tiles'.format(len(tile_slices)))
+        # file_number = 1
+        # for idxs in tile_slices:
+        #     logging.debug(idxs)
+        #     tile = ds.isel(x=idxs[0], y=idxs[1])
+        #     logging.info('Checking tile not empty')
+        #     _data = bool(_has_data(test_layer.isel(x=idxs[0], y=idxs[1])))
+        #     logging.debug(_data)
+        #     if _data:
+        #         logging.info('Processing tile')
+        #         tile = tile.chunk((200, 2000, 2000))
+        #         tile = tile.astype(target_dtype)
+        #         # update attrs twice to guarantee are retained in dataarray
+        #         # and dataset
+        #         tile.attrs = new_attrs
+        #         # add wavelength coord
+        #         _tile = tile.to_dataset(name='reflectance')
+        #         _tile.attrs = new_attrs
+        #         _tile_path = os.path.join(dst_data,
+        #                                   dataset_name+'_{}.nc'.format(
+        #                                       file_number))
+        #         _tile_temp = os.path.join(SCRATCH_PATH,
+        #                                   dataset_name+'_{}.nc'.format(
+        #                                       file_number))
+        #         logging.info('Writing tile {} to scratch...'.format(
+        #             file_number))
+        #         _tile.to_netcdf(_tile_temp)
+        #         logging.info('Moving tile {} to disk...'.format(
+        #             file_number))
+        #         shutil.move(_tile_temp, _tile_path)
+        #         # change to read only for all users
+        #         os.chmod(_tile_path, 0o555)
+        #         # # update tile number and logging
+        #         file_number += 1
+        #     else:
+        #         logging.info('Tile has no data. Skipping...')
+        # logging.info('{} files generated for dataset {}'.format(file_number-1,
+        #                                                         dataset_name))
 
 
 # private funcs
