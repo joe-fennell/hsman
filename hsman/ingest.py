@@ -88,10 +88,11 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         for idxs in tile_slices:
             logging.debug(idxs)
             tile = ds.isel(x=idxs[0], y=idxs[1])
-            logging.debug('Checking tile not empty')
+            logging.info('Checking tile not empty')
             _data = bool(_has_data(tile))
             logging.debug(_data)
             if _data:
+                logging.info('Processing tile')
                 # update attrs twice to guarantee are retained in dataarray
                 # and dataset
                 tile.attrs = new_attrs
