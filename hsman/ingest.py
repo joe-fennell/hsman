@@ -46,7 +46,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
 
     """
     os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
-    with dask.config.set(num_workers=4):
+    with dask.config.set(num_workers=8):
         logging.info('Ingesting {}'.format(dataset_name))
         # make folder for storing outputs
         dst = _make_dataset_folder(dataset_name)
@@ -54,7 +54,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # combine files into a VRT
         vrt_path = _make_vrt(file_list, os.path.join(dst, 'METADATA'))
         logging.debug('VRT path: {}'.format(vrt_path))
-        ds = xarray.open_rasterio(vrt_path, chunks=(200, 5000, 5000))
+        ds = xarray.open_rasterio(vrt_path, chunks=(1, 10000, 10000))
         logging.info('Generated VRT of size {}'.format(ds.shape))
         # metadata attributes often not preserved so get these from files
         new_attrs = _merge_attrs(
@@ -67,21 +67,6 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # retrieve wavelength dimension and add to dataset
         ds = ds.assign_coords({'wavelength':
             ('band', _get_common_wavelengths(file_list))})
-
-        ds = ds.astype(target_dtype)
-        ds.attrs = new_attrs
-        out = ds.to_dataset(name='reflectance')
-        out.attrs = new_attrs
-
-        _temp_path = os.path.join(SCRATCH_PATH,
-                                  dataset_name+'.nc')
-
-        _tile_path = os.path.join(dst_data,
-                                  dataset_name+'.nc')
-        out.to_netcdf(_temp_path)
-        shutil.move(_temp_path, _tile_path)
-        # change to read only for all users
-        os.chmod(_tile_path, 0o555)
         # generate correct tile index sets
         # if target_dtype in ['bool']:
         #     tile_slices = _make_tile_slices(ds, target_file_size, 1)
@@ -101,44 +86,47 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # # read test layer into memory
         # test_layer = ds.isel(band=0).compute()
         # iterate tile slice indices
-        # logging.info('Processing {} tiles'.format(len(tile_slices)))
-        # file_number = 1
-        # for idxs in tile_slices:
-        #     logging.debug(idxs)
-        #     tile = ds.isel(x=idxs[0], y=idxs[1])
-        #     logging.info('Checking tile not empty')
-        #     _data = bool(_has_data(test_layer.isel(x=idxs[0], y=idxs[1])))
-        #     logging.debug(_data)
-        #     if _data:
-        #         logging.info('Processing tile')
-        #         tile = tile.chunk((200, 2000, 2000))
-        #         tile = tile.astype(target_dtype)
-        #         # update attrs twice to guarantee are retained in dataarray
-        #         # and dataset
-        #         tile.attrs = new_attrs
-        #         # add wavelength coord
-        #         _tile = tile.to_dataset(name='reflectance')
-        #         _tile.attrs = new_attrs
-        #         _tile_path = os.path.join(dst_data,
-        #                                   dataset_name+'_{}.nc'.format(
-        #                                       file_number))
-        #         _tile_temp = os.path.join(SCRATCH_PATH,
-        #                                   dataset_name+'_{}.nc'.format(
-        #                                       file_number))
-        #         logging.info('Writing tile {} to scratch...'.format(
-        #             file_number))
-        #         _tile.to_netcdf(_tile_temp)
-        #         logging.info('Moving tile {} to disk...'.format(
-        #             file_number))
-        #         shutil.move(_tile_temp, _tile_path)
-        #         # change to read only for all users
-        #         os.chmod(_tile_path, 0o555)
-        #         # # update tile number and logging
-        #         file_number += 1
-        #     else:
-        #         logging.info('Tile has no data. Skipping...')
-        # logging.info('{} files generated for dataset {}'.format(file_number-1,
-        #                                                         dataset_name))
+        tile_slices = np.arange(len(ds.band))
+        logging.info('Processing {} tiles'.format(len(tile_slices)))
+        file_number = 1
+        for idx in tile_slices:
+            # logging.debug(idxs)
+            # tile = ds.isel(x=idxs[0], y=idxs[1])
+            # logging.info('Checking tile not empty')
+            # _data = bool(_has_data(test_layer.isel(x=idxs[0], y=idxs[1])))
+            # logging.debug(_data)
+            # if _data:
+            logging.info('Processing tile {}/{}'.format(idx+1,
+                                                        len(tile_slices)))
+            tile = ds.isel(band=idx)
+            tile = tile.chunk((1000, 1000))
+            tile = tile.astype(target_dtype)
+            # update attrs twice to guarantee are retained in dataarray
+            # and dataset
+            tile.attrs = new_attrs
+            # add wavelength coord
+            _tile = tile.to_dataset(name='reflectance')
+            _tile.attrs = new_attrs
+            _tile_path = os.path.join(dst_data,
+                                      dataset_name+'_{}.nc'.format(
+                                          file_number))
+            _tile_temp = os.path.join(SCRATCH_PATH,
+                                      dataset_name+'_{}.nc'.format(
+                                          file_number))
+            logging.info('Writing tile {} to scratch...'.format(
+                file_number))
+            _tile.to_netcdf(_tile_temp)
+            logging.info('Moving tile {} to disk...'.format(
+                file_number))
+            shutil.move(_tile_temp, _tile_path)
+            # change to read only for all users
+            os.chmod(_tile_path, 0o555)
+            # # update tile number and logging
+            file_number += 1
+            # else:
+            #     logging.info('Tile has no data. Skipping...')
+        logging.info('{} files generated for dataset {}'.format(file_number-1,
+                                                                dataset_name))
 
 
 # private funcs
