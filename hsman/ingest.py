@@ -53,7 +53,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # combine files into a VRT
         vrt_path = _make_vrt(file_list, os.path.join(dst, 'METADATA'))
         logging.debug('VRT path: {}'.format(vrt_path))
-        ds = xarray.open_rasterio(vrt_path, chunks=2000)
+        ds = xarray.open_rasterio(vrt_path, chunks=(1, 6000, 6000))
         logging.info('Generated VRT of size {}'.format(ds.shape))
         # metadata attributes often not preserved so get these from files
         new_attrs = _merge_attrs(
@@ -81,7 +81,6 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
         # 64 bit formats
         elif target_dtype in ['float64', 'uint64', 'int32']:
             tile_slices = _make_tile_slices(ds, target_file_size, 64)
-        ds = ds.astype(target_dtype)
         logging.info('Loading first layer into memory')
         # read test layer into memory
         test_layer = ds.isel(band=0).compute()
@@ -96,6 +95,8 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
             logging.debug(_data)
             if _data:
                 logging.info('Processing tile')
+                tile = tile.chunk((200, 1000, 1000))
+                tile = tile.astype(target_dtype)
                 # update attrs twice to guarantee are retained in dataarray
                 # and dataset
                 tile.attrs = new_attrs
