@@ -39,12 +39,12 @@ def find_dataset_files(dir, recipe_name, config=None):
         raise ValueError('No matching directory found for {}'
                          .format(params['data_flag']))
 
-    if params['quality_flag'] is not None:
-        quality_matches = _match_quality_paths(data_matches, dir, params)
-        return {'data_path': data_matches,
-                'quality_path': quality_matches}
-    else:
-        return {'data_path': data_matches}
+    # if params['quality_flag'] is not None:
+    #     quality_matches = _match_quality_paths(data_matches, dir, params)
+    #     return {'data_path': data_matches,
+    #             'quality_path': quality_matches}
+    # else:
+    return {'data_path': data_matches}
 
 
 def generate_coverage_id(dataset_name, recipe_name):
@@ -119,21 +119,21 @@ def _is_same_swath(str1, str2):
     return id1 == id2
 
 
-def _match_quality_paths(data_matches, dir, params):
-    # produced identical dict to data_matches for corresponding quality
-    # files
-    quality_matches = _search_directory(dir,
-                                        params['quality_flag'],
-                                        params['data_suffix'])
-    matches = {}
-    for mission, m in data_matches.items():
-        for data_file in m:
-            qpath = None
-            for quality_file in quality_matches[mission]:
-                if _is_same_swath(data_file, quality_file):
-                    qpath = quality_file
-            try:
-                matches[mission].append(qpath)
-            except KeyError:
-                matches[mission] = [qpath]
-    return matches
+# def _match_quality_paths(data_matches, dir, params):
+#     # produced identical dict to data_matches for corresponding quality
+#     # files
+#     quality_matches = _search_directory(dir,
+#                                         params['quality_flag'],
+#                                         params['data_suffix'])
+#     matches = {}
+#     for mission, m in data_matches.items():
+#         for data_file in m:
+#             qpath = None
+#             for quality_file in quality_matches[mission]:
+#                 if _is_same_swath(data_file, quality_file):
+#                     qpath = quality_file
+#             try:
+#                 matches[mission].append(qpath)
+#             except KeyError:
+#                 matches[mission] = [qpath]
+#     return matches
