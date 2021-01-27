@@ -153,4 +153,4 @@ def view_datasets():
         m.add_child(_layer2)
         m.add_child(_layer)
     folium.LayerControl(collapsed=False, ).add_to(m)
-    m
+    return m
