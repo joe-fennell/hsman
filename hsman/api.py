@@ -1,3 +1,4 @@
+import folium
 import geopandas
 import os
 import pyproj
@@ -8,7 +9,7 @@ from .config import DATA_PATH
 
 def get_datasets():
     """
-    Get datasets from cache or by reading
+    Return a pandas dataframe of bounding boxes
     """
     def bounding_box(ds):
         """
@@ -98,3 +99,58 @@ def open_dataset(dataset, chunks=None, mode=None):
 
     if mode == 'rgb':
         return open_image(dataset, chunks)
+
+
+def view_datasets():
+    """
+    View available datasets on a folium map
+    """
+    maplayer = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+    # prepare dataset for plotting
+    dsets = get_datasets()
+    dsets.reset_index(inplace=True)
+    dsets['dataset_type'] = dsets['dataset'].apply(lambda x: x.split('_')[1])
+
+    dsets2 = dsets.copy()
+    dsets2['geometry'] = dsets2.geometry.centroid
+    dsets2 = dsets2.set_geometry('geometry')
+
+    def cstyle(x):
+        cols = {
+            'SWIR': '#1b9e77',
+            'VNIR': '#d95f02',
+            'DSM': '#7570b3',
+            'DTM': '#e7298a',
+            'RGB': '#66a61e'
+        }
+        try:
+            c = cols[x['properties']['dataset_type']]
+        except KeyError:
+            c = '#000000'
+        return {'fillColor': c, 'color': c}
+
+    # gjson = hsman.get_datasets().reset_index().to_json()
+    m = folium.Map(location=[52.7, -2],
+                   zoom_start=6,
+                   tiles=maplayer,
+                   height='80%',
+                   attr='ESRI Aerial')
+
+    names = ['Shortwave IR (Hyspex)',
+             'Vis-NIR (Hyspex)',
+             'RGB aerial',
+             'Digital Surface Model',
+             'Digital Terrain Model']
+
+    for _dk, _name in zip(['SWIR', 'VNIR', 'RGB', 'DSM', 'DTM'], names):
+        _ds = dsets[dsets['dataset_type'] == _dk].to_json()
+        _ds2 = dsets2[dsets2['dataset_type'] == _dk].to_json()
+        _layer2 = folium.GeoJson(_ds2, name=_name, style_function=cstyle,
+                                 zoom_on_click=True)
+        _layer = folium.GeoJson(_ds, name=_name, style_function=cstyle,
+                                zoom_on_click=True)
+        folium.features.GeoJsonPopup(['dataset']).add_to(_layer)
+        m.add_child(_layer2)
+        m.add_child(_layer)
+    folium.LayerControl(collapsed=False, ).add_to(m)
+    m
