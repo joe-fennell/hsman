@@ -15,8 +15,10 @@ def get_datasets():
         """
         Retrieve bounding box in lon/lat
         """
-        transformer = pyproj.Transformer.from_crs(ds.crs.split('=')[-1],
-                                                  "epsg:4326")
+        def parse_crs(CRS):
+            return pyproj.Transformer.from_crs(ds.crs, "epsg:4326")
+
+        transformer = parse_crs(ds.crs)
         tl = transformer.transform(ds.x.min(), ds.y.max())[::-1]
         tr = transformer.transform(ds.x.max(), ds.y.max())[::-1]
         bl = transformer.transform(ds.x.min(), ds.y.min())[::-1]

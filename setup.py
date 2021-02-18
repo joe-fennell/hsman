@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="hsman",
-    version="0.1.0",
+    version="0.1.2",
     author="Joseph T. Fennell",
     author_email="info@joefennell.org",
     description="Hyperspectral Data Manager",
@@ -24,7 +24,9 @@ setuptools.setup(
           'numpy',
           'dask',
           'Click',
-          'netcdf4'
+          'netcdf4',
+          'geopandas',
+          'pyproj'
       ],
     entry_points='''
         [console_scripts]
