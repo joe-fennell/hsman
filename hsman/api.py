@@ -124,8 +124,8 @@ def view_datasets():
     """
     maplayer = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
     # prepare dataset for plotting
-    dsets = get_datasets()
-    dsets.reset_index(inplace=True)
+    dsets = get_datasets().drop('date', 1)
+    # dsets.reset_index(inplace=True)
     dsets['dataset_type'] = dsets['dataset'].apply(lambda x: x.split('_')[1])
 
     dsets2 = dsets.copy()
