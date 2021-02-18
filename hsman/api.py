@@ -1,6 +1,7 @@
 import folium
 import geopandas
 import os
+import pandas as pd
 import pyproj
 import shapely
 import xarray
@@ -25,6 +26,14 @@ def get_datasets():
         br = transformer.transform(ds.x.max(), ds.y.min())[::-1]
 
         return [tl, tr, br, bl, tl]
+
+    def auto_generate_fields(ds):
+        ds['ID'] = ds.dataset.apply(lambda x: x.split('_')[0])
+        ds['Site'] = ds.dataset.apply(lambda x: x.split('_')[0][:5])
+        ds['type'] = ds.dataset.apply(lambda x: x.split('_')[1])
+        ds['date'] = ds.dataset.apply(lambda x: x.split('_')[0][5:13])
+        ds['date'] = pd.to_datetime(ds['date'])
+        return ds.sort_values(['Site', 'type'])
     # get all names that don't start with _ in data dir
     names = os.listdir(DATA_PATH)
     names = [x for x in names if not x.startswith(('_', '.'))]
@@ -41,7 +50,10 @@ def get_datasets():
         pass
     if len(names) < 1:
         if gdf is not None:
-            return gdf
+            try:
+                return auto_generate_fields(gdf.reset_index())
+            except:
+                return gdf.reset_index()
         else:
             raise IOError('No datasets found')
     # if gdf is not upto date
@@ -55,7 +67,10 @@ def get_datasets():
     new_df = geopandas.pd.concat([gdf, new_df]).reset_index(drop=True)
     # save new file
     new_df.to_file(os.path.join(DATA_PATH, '_inventory.gpkg'), driver="GPKG")
-    return new_df
+    try:
+        return auto_generate_fields(new_df)
+    except:
+        return new_df
 
 
 def open_dataset(dataset, chunks=None, mode=None):
