@@ -122,7 +122,7 @@ def view_datasets():
     """
     View available datasets on a folium map
     """
-    maplayer = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+    # maplayer = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
     # prepare dataset for plotting
     dsets = get_datasets().drop('date', 1)
     # dsets.reset_index(inplace=True)
@@ -149,7 +149,7 @@ def view_datasets():
     # gjson = hsman.get_datasets().reset_index().to_json()
     m = folium.Map(location=[52.7, -2],
                    zoom_start=6,
-                   tiles=maplayer,
+                   # tiles=maplayer,
                    height='80%',
                    attr='ESRI Aerial')
 
