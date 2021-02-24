@@ -43,7 +43,7 @@ def get_datasets():
                                                '_inventory.gpkg'))
         # gdf = gdf.set_index('dataset')
         # filter any names already present in gpkg
-        names = [x for x in names if not (gdf.index == x).any()]
+        names = [x for x in names if not (gdf.dataset == x).any()]
     except geopandas.io.file.fiona.errors.DriverError:
         # no file so all names need to be parsed
         gdf = None
