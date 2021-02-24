@@ -41,7 +41,7 @@ def get_datasets():
     try:
         gdf = geopandas.read_file(os.path.join(DATA_PATH,
                                                '_inventory.gpkg'))
-        gdf = gdf.set_index('dataset')
+        # gdf = gdf.set_index('dataset')
         # filter any names already present in gpkg
         names = [x for x in names if not (gdf.index == x).any()]
     except geopandas.io.file.fiona.errors.DriverError:
@@ -166,7 +166,7 @@ def view_datasets():
                                  zoom_on_click=True)
         _layer = folium.GeoJson(_ds, name=_name, style_function=cstyle,
                                 zoom_on_click=True)
-        folium.features.GeoJsonPopup(['dataset']).add_to(_layer)
+        folium.features.GeoJsonPopup(['dataset']).add_to(_layer2)
         m.add_child(_layer2)
         m.add_child(_layer)
     folium.LayerControl(collapsed=False, ).add_to(m)
