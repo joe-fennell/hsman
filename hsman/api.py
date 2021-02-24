@@ -6,6 +6,7 @@ import pyproj
 import shapely
 import xarray
 from .config import DATA_PATH
+import warnings
 
 
 def get_datasets():
@@ -39,8 +40,10 @@ def get_datasets():
     names = [x for x in names if not x.startswith(('_', '.'))]
 
     try:
-        gdf = geopandas.read_file(os.path.join(DATA_PATH,
-                                               '_inventory.gpkg'))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            gdf = geopandas.read_file(os.path.join(DATA_PATH,
+                                                   '_inventory.gpkg'))
         # gdf = gdf.set_index('dataset')
         # filter any names already present in gpkg
         names = [x for x in names if not (gdf.dataset == x).any()]
@@ -129,7 +132,9 @@ def view_datasets():
     dsets['dataset_type'] = dsets['dataset'].apply(lambda x: x.split('_')[1])
 
     dsets2 = dsets.copy()
-    dsets2['geometry'] = dsets2.geometry.centroid
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dsets2['geometry'] = dsets2.geometry.centroid
     dsets2 = dsets2.set_geometry('geometry')
 
     def cstyle(x):
