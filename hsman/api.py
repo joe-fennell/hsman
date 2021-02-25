@@ -80,18 +80,25 @@ def open_dataset(dataset, chunks=None, mode=None):
     """
     Open a dataset
     """
-    def open_hsi_dataset(dataset, chunks=None):
-        def all_files(dataset):
-            dpath = os.path.abspath(os.path.join(DATA_PATH, dataset, "DATA"))
-            files = os.listdir(dpath)
-            return [os.path.join(dpath, x) for x in files if x.endswith('.nc')]
+    def get_hsi_path(dataset):
+        dpath = os.path.abspath(os.path.join(DATA_PATH, dataset, "DATA"))
+        files = os.listdir(dpath)
+        return [os.path.join(dpath, x) for x in files if x.endswith('.nc')]
 
+    def get_rgb_path(dataset):
+        flist = os.listdir(os.path.join(DATA_PATH, dataset, "DATA"))
+        if len(flist) > 1:
+            raise IOError('More than one file in image directory')
+        else:
+            return flist[0]
+
+    def open_hsi_dataset(dataset, chunks=None):
         def add_band_dim(dataset):
             return dataset.expand_dims('band')
         # define chunks
         if chunks is None:
             chunks = {'band': 1, 'x': 1000, 'y': 1000}
-        flist = all_files(dataset)
+        flist = get_hsi_path(dataset)
         ds = xarray.open_mfdataset(flist,
                                    preprocess=add_band_dim,
                                    chunks=10000).reflectance
@@ -100,19 +107,25 @@ def open_dataset(dataset, chunks=None, mode=None):
     def open_image(dataset, chunks=None):
         if chunks is None:
             chunks = {'band': 1, 'x': 1000, 'y': 1000}
-        flist = os.listdir(os.path.join(DATA_PATH, dataset, "DATA"))
-        if len(flist) > 1:
-            raise IOError('More than one file in image directory')
+        flist = get_rgb_path(dataset)
         return xarray.open_rasterio(os.path.join(DATA_PATH,
                                                  dataset,
                                                  "DATA",
-                                                 flist[0]),
+                                                 flist),
                                     chunks=chunks)
     if mode is None:
         try:
             return open_hsi_dataset(dataset, chunks)
         except IOError:
             return open_image(dataset, chunks)
+
+    # returns path instead of dataset
+    if mode == 'path':
+        try:
+            open_hsi_dataset(dataset, chunks)
+            return get_hsi_path(dataset)
+        except IOError:
+            return get_rgb_path(dataset)
 
     if mode == 'hsi':
         return open_hsi_dataset(dataset, chunks)
@@ -125,7 +138,6 @@ def view_datasets():
     """
     View available datasets on a folium map
     """
-    # maplayer = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
     # prepare dataset for plotting
     dsets = get_datasets().drop('date', 1)
     # dsets.reset_index(inplace=True)

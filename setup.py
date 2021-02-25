@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="hsman",
-    version="0.1.4",
+    version="0.1.5",
     author="Joseph T. Fennell",
     author_email="info@joefennell.org",
     description="Hyperspectral Data Manager",
@@ -38,5 +38,5 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.7',
+    python_requires='>=3.5',
 )
