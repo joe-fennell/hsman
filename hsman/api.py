@@ -86,11 +86,12 @@ def open_dataset(dataset, chunks=None, mode=None):
         return [os.path.join(dpath, x) for x in files if x.endswith('.nc')]
 
     def get_rgb_path(dataset):
-        flist = os.listdir(os.path.join(DATA_PATH, dataset, "DATA"))
+        dpath = os.path.join(DATA_PATH, dataset, "DATA")
+        flist = os.listdir(dpath)
         if len(flist) > 1:
             raise IOError('More than one file in image directory')
         else:
-            return flist[0]
+            return os.path.join(dpath, flist[0])
 
     def open_hsi_dataset(dataset, chunks=None):
         def add_band_dim(dataset):
@@ -107,11 +108,8 @@ def open_dataset(dataset, chunks=None, mode=None):
     def open_image(dataset, chunks=None):
         if chunks is None:
             chunks = {'band': 1, 'x': 1000, 'y': 1000}
-        flist = get_rgb_path(dataset)
-        return xarray.open_rasterio(os.path.join(DATA_PATH,
-                                                 dataset,
-                                                 "DATA",
-                                                 flist),
+        fpath = get_rgb_path(dataset)
+        return xarray.open_rasterio(fpath,
                                     chunks=chunks)
     if mode is None:
         try:
