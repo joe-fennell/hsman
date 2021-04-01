@@ -1,7 +1,7 @@
 """
 Feature extraction submodule
 """
-from .xarray_utils import get_transform, crop_to_dataframe
+from .array_utils import get_transform, crop_to_dataframe
 
 class RegionPatchExtractor(object):
     """

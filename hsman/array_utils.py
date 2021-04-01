@@ -65,3 +65,49 @@ def crop_to_dataframe(DataArray, GeoDataFrame):
     ymin = float(geom_bounds.miny.min())
     ymax = float(geom_bounds.maxy.max())
     return DataArray.sel(x=slice(xmin, xmax), y=slice(ymax, ymin))
+
+
+def make_patches(p_size=(10,10), n=(5,5)):
+    """
+    Generate a 2D patch index array
+
+    Parameters
+    ----------
+    p_size : tuple
+        patch sizes for each dimension
+    n : tuple
+        number of patches in each dimension
+
+    Returns
+    -------
+    patches : numpy.array
+        2D array of integers
+    """
+    _n = np.multiply(*n)
+    _s = np.multiply(*p_size)
+    return np.repeat(
+        np.arange(_n), _s).reshape(
+        (n[0], n[1], p_size[0], p_size[1])).swapaxes(1,2).reshape(
+        (n[0] * p_size[0],n[1] * p_size[1]))
+
+
+def patches_like(ar2d, p_size=(3,3)):
+    """
+    Generate a 2D patch index array of equivalent size to ar2d
+
+    Parameters
+    ----------
+    ar2d : array-like
+        2D array like
+    p_size : tuple
+        patch sizes for each dimension
+
+    Returns
+    -------
+    patches : numpy.array
+        2D array of integers
+    """
+    s = ar2d.shape
+    n=(int(np.ceil(s[0]/p_size[0])),
+       int(np.ceil(s[1]/p_size[1])))
+    return make_patches(p_size, n)[:s[0], :s[1]]
