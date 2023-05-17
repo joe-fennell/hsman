@@ -6,10 +6,12 @@ import datetime
 import functools
 import logging
 import numpy as np
+import math
 import os
 import xarray
 import subprocess
 import shutil
+import rasterio
 
 from .config import DATA_PATH, logger, SCRATCH_PATH
 logger()
@@ -99,7 +101,7 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
             logging.info('Processing tile {}/{}'.format(idx+1,
                                                         len(tile_slices)))
             tile = ds.isel(band=idx)
-            tile = tile.chunk((1000, 1000))
+            tile = tile.chunk((10000, 10000))
             tile = tile.astype(target_dtype)
             # update attrs twice to guarantee are retained in dataarray
             # and dataset
@@ -125,19 +127,8 @@ def ingest_hsi(file_list, dataset_name, target_dtype, target_file_size=2e9):
 
 # private funcs
 def _get_collect_time(filename):
-    """
-    Parameters
-    ----------
-    filename : str
-        path to raster
-    """
+    # returns the acquisition/collect time of a file
     def _estimate_collect_time(filename):
-        """
-        Parameters
-        ----------
-        filename : str
-            filename or path of file
-        """
         fname = os.path.basename(filename)
         date = fname.split('_')[0].split('-')[2]
         year = int(date[:4])
@@ -162,25 +153,8 @@ def _get_collect_time(filename):
     return datetime.datetime(*d, *t)
 
 
-def _get_common_wavelengths(file_paths):
-    # returns only wavelengths present in all
-    wlens = _get_all_wavelengths(file_paths)
-    return functools.reduce(np.intersect1d, wlens).round(0)
-
-
 def _get_all_wavelengths(file_paths):
-    """
-    Returns a list of wavelength dims for all files file_paths
-
-    Parameters
-    ----------
-    file_paths : list
-        iterable of paths to valid rasterio-compatible files.
-
-    Returns
-    -------
-    wavelengths : list
-    """
+    # returns a list of lists of all wavelengths in a file for a list of files
     def _get_wavelengths(band_names):
         bn = band_names.split(',')
         try:
@@ -199,6 +173,11 @@ def _get_all_wavelengths(file_paths):
             # sometimes this is missing so need to parse from band names
             wlens.append(_get_wavelengths(ar.attrs['band_names']))
     return wlens
+
+def _get_common_wavelengths(file_paths):
+    # returns only wavelengths present in all files
+    wlens = _get_all_wavelengths(file_paths)
+    return functools.reduce(np.intersect1d, wlens).round(0)
 
 
 def _has_data(dataset, nodataval=0):
@@ -220,63 +199,35 @@ def _make_dataset_folder(name):
     return new_path
 
 
-def _make_tile_slices(dataset, target_size=1e9, value_size=16):
-    # make a list of tuples of slices [(x_slice_1, y_slice_1), (x_slice_2)]
-    def _calculate_tile_delta(dataset, target_size, value_size):
-        # calculate tile dimension from the target file size and returns tuple
-        try:
-            bands = len(dataset.band)
-        except AttributeError:
-            raise AttributeError('dataset does not have bands dimension')
-        dx = np.ceil(np.sqrt((target_size / (value_size/8)) / bands))
-        return dx
-    # pix in each spatial dim of tile
-    _d = _calculate_tile_delta(dataset, target_size, value_size)
-    # maximum indices for x and y dim
-    xmax = (np.ceil(len(dataset.x)/_d) * _d) + 1
-    ymax = (np.ceil(len(dataset.y)/_d) * _d) + 1
-    # make manual meshgrid of slices
-    xs = np.arange(0, xmax, _d, int)
-    ys = np.arange(0, ymax, _d, int)
-    slices = []
-    for i in range(len(xs)-1):
-        for j in range(len(ys)-1):
-            slices.append(
-                (
-                    slice(xs[i], xs[i+1], 1),
-                    slice(ys[j], ys[j+1], 1)
-                )
-            )
-    return slices
-
-
-def _idx_common(wlen_list):
-    def _to_cmd(ar):
-        out = []
-        for v in ar:
-            out.append('-b')
-            out.append(str(v))
-        return out
-    # function generates the band args to retrieve only bands common to
-    # whole dataset
-    # rounds all the wavelength coords to nearest integer value
-    rounded = [x.round(0) for x in wlen_list]
-    common = functools.reduce(np.intersect1d, rounded)
-    out = []
-    for wl in rounded:
-        _, idxs, _ = np.intersect1d(wl, common, return_indices=True)
-        # add 1 to go to raster bands
-        idxs += 1
-        # every other value is the -b band cmd
-        out.append(_to_cmd(idxs))
-    return out
-
-
 def _make_vrt(file_list, dst):
+
+
+    def idx_common(wlen_list):
+        def _to_cmd(ar):
+            out = []
+            for v in ar:
+                out.append('-b')
+                out.append(str(v))
+            return out
+        # function generates the band args to retrieve only bands common to
+        # whole dataset
+        # rounds all the wavelength coords to nearest integer value
+        rounded = [x.round(0) for x in wlen_list]
+        common = functools.reduce(np.intersect1d, rounded)
+        out = []
+        for wl in rounded:
+            _, idxs, _ = np.intersect1d(wl, common, return_indices=True)
+            # add 1 to go to raster bands
+            idxs += 1
+            # every other value is the -b band cmd
+            out.append(_to_cmd(idxs))
+        return out
+
     # build a VRT for each file with a subset of bands contained in all
-    bands = _idx_common(_get_all_wavelengths(file_list))
+    bands = idx_common(_get_all_wavelengths(file_list))
     sub_vrt_files = []
     for i in range(len(bands)):
+        # add in a preprocessing stage
         dst_path = os.path.join(dst, '_merged_{}.vrt'.format(i))
         cmd = ['gdalbuildvrt', dst_path]
         cmd += [file_list[i]]
@@ -305,3 +256,29 @@ def _merge_attrs(attrs_list):
     for d in attrs_list:
         new.update(d)
     return new
+
+
+def _unrotate_hsi(file_list, dst):
+    output_files = []
+    for input_file in file_list:
+        fname = f'unrotated_{os.path.basename(input_file)}'
+        output_file = os.path.join(dst, fname)
+        # Open the input file using rasterio
+        with rasterio.open(input_file) as src:
+            crs = f'epsg:{src.crs.to_epsg()}'
+
+        # Construct the gdalwarp command
+        command = [
+            "gdalwarp",
+            "-r", "bilinear",
+            "-t_srs", crs,
+            input_file,
+            output_file
+        ]
+
+        # Run the command using subprocess
+        subprocess.run(command, check=True)
+
+        # Return the output file path
+        output_files.append(output_file)
+    return output_files

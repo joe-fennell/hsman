@@ -1,4 +1,3 @@
-import folium
 import geopandas
 import os
 import pandas as pd
@@ -69,7 +68,10 @@ def get_datasets():
                                     geometry=bb)
     new_df = geopandas.pd.concat([gdf, new_df]).reset_index(drop=True)
     # save new file
-    new_df.to_file(os.path.join(DATA_PATH, '_inventory.gpkg'), driver="GPKG")
+    try:
+        new_df.to_file(os.path.join(DATA_PATH, '_inventory.gpkg'), driver="GPKG")
+    except:
+        print('New database not saved')
     try:
         return auto_generate_fields(new_df)
     except:
@@ -136,6 +138,11 @@ def view_datasets():
     """
     View available datasets on a folium map
     """
+    try:
+        import folium
+    except ModuleNotFoundError:
+        raise RuntimeError("'folium' package must be installed to call this function")
+
     # prepare dataset for plotting
     dsets = get_datasets().drop('date', 1)
     # dsets.reset_index(inplace=True)

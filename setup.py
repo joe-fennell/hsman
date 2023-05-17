@@ -23,7 +23,6 @@ setuptools.setup(
           'pyyaml',
           'numpy',
           'dask',
-          'folium',
           'Click',
           'netcdf4',
           'geopandas',
