@@ -2,7 +2,7 @@ from hsman.ingest import _get_common_idx, _make_dataset_folder, \
 _get_collect_time, _unrotate_hsi, _get_other_metadata, _merge_band, \
 ingest_hsi, ingest_image
 
-from sample_data import generate_rotated_raster
+from sample_data import generate_rotated_raster, generate_tif
 import datetime
 import xarray
 import os
@@ -65,7 +65,7 @@ def test_merge_band(tmp_path):
                          meta={'testattr':'abc'}, new_band_wavelength=500,)
     merged = xarray.open_mfdataset(merged, combine='by_coords')
     assert merged['reflectance'].shape == (16,14)
-    assert merged.attrs['testattr'] == 'abc'
+    assert merged.reflectance.attrs['testattr'] == 'abc'
 
 
 def test_merge_band_error(tmp_path):
@@ -86,3 +86,8 @@ def test_ingest_hsi(tmp_path):
     assert len(file_list) == 3
     status = os.stat(os.path.join(dst, 'DATA', file_list[0]))
     assert oct(status.st_mode)[-3:] == '555'
+
+
+def test_ingest_image(tmp_path):
+    ds = generate_tif(tmp_path)
+    ingest_image(ds, 'TEST01')

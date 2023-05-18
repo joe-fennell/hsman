@@ -15,3 +15,9 @@ def generate_rotated_raster(dst, rotated=True):
         shutil.copy(os.path.join(HERE, 'test_unrotated.hdr'), hdr_dst)
 
     return img_dst
+
+
+def generate_tif(dst):
+    img_dst = os.path.join(dst, 'test.tif')
+    shutil.copy(os.path.join(HERE, 'test.tif'), img_dst)
+    return img_dst

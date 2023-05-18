@@ -26,8 +26,15 @@ if "PYTEST_CURRENT_TEST" in os.environ:
 
 def ingest_image(file_path, dataset_name):
     """Ingest a single image file (e.g. tif)
+
+    Parameters
+    ----------
+    file_path : path-like
+        file path of input tif
+    dataset_name : str
+        name to use for folder and file names
     """
-    logging.info('Ingesting {}'.format(dataset_name))
+    logging.info(f'Ingesting {dataset_name} using image pipeline')
     dst = _make_dataset_folder(dataset_name)
     new_fpath = os.path.join(dst,
                              'DATA',
@@ -36,7 +43,8 @@ def ingest_image(file_path, dataset_name):
     shutil.copyfile(file_path, new_fpath)
     # change permissions to read only
     os.chmod(new_fpath, 0o555)
-    logging.info('1 file generated for dataset {}'.format(dataset_name))
+    logging.info(f'Ingestion of {dataset_name} complete!')
+    return dst
 
 
 def ingest_hsi(file_paths, dataset_name):
@@ -49,8 +57,7 @@ def ingest_hsi(file_paths, dataset_name):
     dataset_name : str
         name to use for folder and file names
     """
-
-
+    logging.info(f'Ingesting {dataset_name} using HSI pipeline')
     # use temporary directory context handler
     with tempfile.TemporaryDirectory(dir=SCRATCH_PATH) as temp_dir:
         # generate dataset folder
