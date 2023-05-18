@@ -35,7 +35,7 @@ def ingest_image(file_path, dataset_name):
         name to use for folder and file names
     """
     logging.info(f'Ingesting {dataset_name} using image pipeline')
-    dst = _make_dataset_folder(dataset_name)
+    dst, _ = _make_dataset_folder(dataset_name)
     new_fpath = os.path.join(dst,
                              'DATA',
                              os.path.basename(file_path))
@@ -61,15 +61,12 @@ def ingest_hsi(file_paths, dataset_name):
     # use temporary directory context handler
     with tempfile.TemporaryDirectory(dir=SCRATCH_PATH) as temp_dir:
         # generate dataset folder
-        tmp_main = _make_dataset_folder(dataset_name,
+        tmp_main, name = _make_dataset_folder(dataset_name,
                                         os.path.join(SCRATCH_PATH, temp_dir))
 
         tmp_data = os.path.join(tmp_main, 'DATA')
         # make path of final destination where data will be transferred
-        dst = os.path.join(DATA_PATH,
-                           os.path.split(os.path.dirname(tmp_main))[-1])
-
-        logging.info(f'Setting up {dataset_name} at {dst}...')
+        dst = os.path.join(DATA_PATH, name)
 
         # generate band idx and wavelengths
         band_idxs, wavelengths = _get_common_idx(file_paths)
@@ -214,16 +211,16 @@ def _get_other_metadata(file_paths):
 
 # function for setting up dir structure
 def _make_dataset_folder(name, dst=DATA_PATH):
-    path = os.path.join(dst, name)
-    # if already exists, add a suffix
-    new_path = path
+    new_name = name
     i = 1
-    while os.path.exists(new_path):
-        new_path = path + '_{}'.format(i)
+    while os.path.exists(os.path.join(dst, new_name)):
+        new_name = f'{name}_{i}'.format(i)
         i += 1
+    new_path = os.path.join(dst, new_name)
     os.makedirs(os.path.join(new_path, 'DATA'))
     os.makedirs(os.path.join(new_path, 'METADATA'))
-    return new_path
+    print(new_path)
+    return new_path, new_name
 
 
 # functions for generating new files

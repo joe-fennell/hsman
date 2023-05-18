@@ -30,7 +30,8 @@ def test_get_other_metadata(tmp_path):
 
 
 def test_make_dataset_folder(tmp_path):
-    fp = _make_dataset_folder('TEST1')
+    fp, name = _make_dataset_folder('TEST1')
+    assert name == 'TEST1'
     assert os.path.exists(fp)
 
 
