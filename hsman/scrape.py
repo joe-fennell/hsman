@@ -39,11 +39,6 @@ def find_dataset_files(dir, recipe_name, config=None):
         raise ValueError('No matching directory found for {}'
                          .format(params['data_flag']))
 
-    # if params['quality_flag'] is not None:
-    #     quality_matches = _match_quality_paths(data_matches, dir, params)
-    #     return {'data_path': data_matches,
-    #             'quality_path': quality_matches}
-    # else:
     return {'data_path': data_matches}
 
 

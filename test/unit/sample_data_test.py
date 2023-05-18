@@ -21,7 +21,6 @@ def test_metadata(tmp_path):
     # make sure
     rpath = generate_rotated_raster(tmp_path, True)
     ds = xarray.open_rasterio(rpath)
-    print(list(ds.attrs.keys()))
     assert 'band_names' in ds.attrs
 
 
@@ -34,7 +33,6 @@ def _is_rotated(fpath):
         # Check the rotation angle
         rotation_angle = math.atan2(transform[3], transform[0]) * (180 / math.pi)
         if rotation_angle != 0:
-            print('rotation of {}'.format(rotation_angle))
             return True
         else:
             return False
