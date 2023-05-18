@@ -26,7 +26,8 @@ setuptools.setup(
           'Click',
           'netcdf4',
           'geopandas',
-          'pyproj'
+          'pyproj',
+          'gdal'
       ],
     entry_points='''
         [console_scripts]

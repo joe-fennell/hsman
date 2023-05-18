@@ -96,20 +96,41 @@ def open_dataset(dataset, chunks=None, mode=None):
             return os.path.join(dpath, flist[0])
 
     def open_hsi_dataset(dataset, chunks=None):
-        def add_band_dim(dataset):
-            return dataset.expand_dims('band')
-        # define chunks
-        if chunks is None:
-            chunks = {'band': 1, 'x': 1000, 'y': 1000}
+
+        def read_hsi_v1(flist):
+            # works with original version
+            def add_band_dim(dataset):
+                return dataset.expand_dims('band')
+            # define chunks
+            if chunks is None:
+                chunks = {'band': 1, 'x': 10000, 'y': 10000}
+            ds = xarray.open_mfdataset(flist,
+                                       preprocess=add_band_dim,
+                                       chunks=10000).reflectance
+            return ds.chunk(chunks)
+
+        def read_hsi_v2(flist):
+            # works with the newer version
+            ds = xarray.open_mfdataset(flist,
+                                       chunks={'band':1, 'y':10000, 'x':10000}
+                                       )
+            ds = ds.assign_coords(
+                {'wavelength': ('band', ds.wavelength.values)}
+                )
+            return ds.reflectance
+
         flist = get_hsi_path(dataset)
-        ds = xarray.open_mfdataset(flist,
-                                   preprocess=add_band_dim,
-                                   chunks=10000).reflectance
-        return ds.chunk(chunks)
+
+        # try original version first
+        try:
+            return read_hsi_v1(flist)
+        except ValueError:
+            return read_hsi_v2(flist)
+
 
     def open_image(dataset, chunks=None):
         if chunks is None:
-            chunks = {'band': 1, 'x': 1000, 'y': 1000}
+            chunks = {'band': 1, 'x': 10000, 'y': 10000}
         fpath = get_rgb_path(dataset)
         return xarray.open_rasterio(fpath,
                                     chunks=chunks)

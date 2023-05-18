@@ -84,3 +84,5 @@ def test_ingest_hsi(tmp_path):
     assert os.path.exists(dst)
     file_list = os.listdir(os.path.join(dst, 'DATA'))
     assert len(file_list) == 3
+    status = os.stat(os.path.join(dst, 'DATA', file_list[0]))
+    assert oct(status.st_mode)[-3:] == '555'

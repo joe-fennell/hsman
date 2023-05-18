@@ -25,8 +25,7 @@ if "PYTEST_CURRENT_TEST" in os.environ:
 
 
 def ingest_image(file_path, dataset_name):
-    """
-    Ingest a single image file (e.g. tif)
+    """Ingest a single image file (e.g. tif)
     """
     logging.info('Ingesting {}'.format(dataset_name))
     dst = _make_dataset_folder(dataset_name)
@@ -99,6 +98,7 @@ def ingest_hsi(file_paths, dataset_name):
         [os.chmod(x, 0o555) for x in flist]
         logging.info('Dataset generation complete. Transferring to store...')
         shutil.move(tmp_main, dst)
+    os.chmod(dst, 0o555)
     logging.info(f'Ingestion of {dataset_name} complete!')
     return dst
 
@@ -283,12 +283,7 @@ def _unrotate_hsi(file_paths, dst, band='all'):
 
 def _merge_band(file_paths, dst, band, meta, new_band_wavelength,
                 new_band_index=None):
-    # generates a netcdf file for a band combination
-    # setup filepaths
-    dst_fpath = os.path.join(dst, 'band_{}_merged.nc'.format(band))
-
-    if os.path.exists(dst_fpath):
-        raise FileExistsError(f'{dst_fpath} already exists!')
+    # generates a netcdf file for a band combinatio
 
     try:
         len(band)
@@ -297,6 +292,14 @@ def _merge_band(file_paths, dst, band, meta, new_band_wavelength,
 
     except TypeError:
         new_band_index = band
+
+    # setup filepaths
+    dst_fpath = os.path.join(dst, 'band_{}_merged.nc'.format(new_band_index))
+
+    if os.path.exists(dst_fpath):
+        raise FileExistsError(f'{dst_fpath} already exists!')
+
+
 
     with tempfile.TemporaryDirectory() as temp_dir:
         # rotate files and write to a temp array on disk
@@ -331,7 +334,7 @@ def _merge_band(file_paths, dst, band, meta, new_band_wavelength,
         coordinate_var2[:] = [new_band_wavelength]
 
         for k, v in meta.items():
-            dataset.setncattr(k, v)
+            reflectance_var.setncattr(k, v)
 
         # Synchronize changes to the file
         dataset.sync()
