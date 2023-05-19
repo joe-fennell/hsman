@@ -102,8 +102,7 @@ def open_dataset(dataset, chunks=None, mode=None):
             def add_band_dim(dataset):
                 return dataset.expand_dims('band')
             # define chunks
-            if chunks is None:
-                chunks = {'band': 1, 'x': 10000, 'y': 10000}
+            chunks = {'band': 1, 'x': 10000, 'y': 10000}
             ds = xarray.open_mfdataset(flist,
                                        preprocess=add_band_dim,
                                        chunks=10000).reflectance
