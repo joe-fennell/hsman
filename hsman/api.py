@@ -35,7 +35,7 @@ def get_datasets():
             return pyproj.Transformer.from_crs(CRS, "epsg:4326")
 
 
-        transformer = parse_crs(ds.crs)
+        transformer = parse_crs(ds)
         tl = transformer.transform(ds.x.min(), ds.y.max())[::-1]
         tr = transformer.transform(ds.x.max(), ds.y.max())[::-1]
         bl = transformer.transform(ds.x.min(), ds.y.min())[::-1]
