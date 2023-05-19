@@ -16,8 +16,21 @@ def get_datasets():
         """
         Retrieve bounding box in lon/lat
         """
-        def parse_crs(CRS):
-            return pyproj.Transformer.from_crs(ds.crs, "epsg:4326")
+
+        def parse_crs(ds):
+            def get_crs_nc(ds):
+                for d in ds.data_vars:
+                    for name, val in ds[d].attrs.items():
+                        if 'crs' in name.lower():
+                            return val
+            # first try, look for crs attribute
+            try:
+                return pyproj.Transformer.from_crs(ds.crs, "epsg:4326")
+            # if no CRS, it is likely a NetCDF where the CRS is stored as a
+            # data variable
+            except AttributeError:
+                return pyproj.Transformer.from_crs(get_crs_nc(ds), "epsg:4326")
+
 
         transformer = parse_crs(ds.crs)
         tl = transformer.transform(ds.x.min(), ds.y.max())[::-1]
@@ -105,7 +118,7 @@ def open_dataset(dataset, chunks=None, mode=None):
             chunks = {'band': 1, 'x': 10000, 'y': 10000}
             ds = xarray.open_mfdataset(flist,
                                        preprocess=add_band_dim,
-                                       chunks=10000).reflectance
+                                       chunks=10000)
             return ds.chunk(chunks)
 
         def read_hsi_v2(flist):
@@ -116,7 +129,7 @@ def open_dataset(dataset, chunks=None, mode=None):
             ds = ds.assign_coords(
                 {'wavelength': ('band', ds.wavelength.values)}
                 )
-            return ds.reflectance
+            return ds
 
         flist = get_hsi_path(dataset)
 
