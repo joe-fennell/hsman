@@ -29,7 +29,7 @@ def get_datasets():
                 CRS = ds.attrs['crs']
             # if no CRS, it is likely a NetCDF where the CRS is stored as a
             # data variable
-            except AttributeError, KeyError:
+            except KeyError:
                 CRS = get_crs_nc(ds)
 
             return pyproj.Transformer.from_crs(CRS, "epsg:4326")
