@@ -58,7 +58,7 @@ def get_datasets():
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             gdf = geopandas.read_file(os.path.join(DATA_PATH,
-                                                   '_inventory.gpkg'))
+                                                   '.inventory.gpkg'))
         # gdf = gdf.set_index('dataset')
         # filter any names already present in gpkg
         names = [x for x in names if not (gdf.dataset == x).any()]
@@ -85,7 +85,7 @@ def get_datasets():
     new_df = geopandas.pd.concat([gdf, new_df]).reset_index(drop=True)
     # save new file
     try:
-        new_df.to_file(os.path.join(DATA_PATH, '_inventory.gpkg'), driver="GPKG")
+        new_df.to_file(os.path.join(DATA_PATH, '.inventory.gpkg'), driver="GPKG")
     except:
         print('New database not saved')
     try:
@@ -180,7 +180,7 @@ def view_datasets():
         raise RuntimeError("'folium' package must be installed to call this function")
 
     # prepare dataset for plotting
-    dsets = get_datasets().drop('date', 1)
+    dsets = get_datasets().drop(labels='date', axis='columns')
     # dsets.reset_index(inplace=True)
     dsets['dataset_type'] = dsets['dataset'].apply(lambda x: x.split('_')[1])
 
