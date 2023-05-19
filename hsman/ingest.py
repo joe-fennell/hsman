@@ -59,31 +59,25 @@ def ingest_hsi(file_paths, dataset_name):
     """
     logging.info(f'Ingesting {dataset_name} using HSI pipeline')
     # use temporary directory context handler
-    with tempfile.TemporaryDirectory(dir=SCRATCH_PATH) as temp_dir:
-        # generate dataset folder
-        tmp_main, name = _make_dataset_folder(dataset_name,
-                                        os.path.join(SCRATCH_PATH, temp_dir))
+    # generate dataset folder
+    dst, name = _make_dataset_folder(dataset_name, DATA_PATH)
 
-        tmp_data = os.path.join(tmp_main, 'DATA')
-        # make path of final destination where data will be transferred
-        dst = os.path.join(DATA_PATH, name)
+    # generate band idx and wavelengths
+    band_idxs, wavelengths = _get_common_idx(file_paths)
 
-        # generate band idx and wavelengths
-        band_idxs, wavelengths = _get_common_idx(file_paths)
+    # For testing only, make a small version
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        band_idxs = band_idxs[:,:3]
+        wavelengths = wavelengths[:3]
 
-        # For testing only, make a small version
-        if "PYTEST_CURRENT_TEST" in os.environ:
-            band_idxs = band_idxs[:,:3]
-            wavelengths = wavelengths[:3]
+    # get all metadata
+    metadata = _get_other_metadata(file_paths)
+    metadata['acquisition_start_time'] = _get_collect_time(file_paths).isoformat()
 
-        # get all metadata
-        metadata = _get_other_metadata(file_paths)
-        metadata['acquisition_start_time'] = _get_collect_time(file_paths).isoformat()
-
-        # iterate the bands and generate band slice files one at a time
-        n_bands = len(wavelengths)
-        flist = []
-        for i in range(n_bands):
+    # iterate the bands and generate band slice files one at a time
+    n_bands = len(wavelengths)
+    for i in range(n_bands):
+        with tempfile.TemporaryDirectory(dir=SCRATCH_PATH) as temp_dir:
             new_band_idx = i+1
             band_idx = band_idxs[:, i]
             wavelength = wavelengths[i]
@@ -92,16 +86,14 @@ def ingest_hsi(file_paths, dataset_name):
                 n_bands,
                 wavelength
             ))
+            _new_file = _merge_band(file_paths, temp_dir, band_idx, metadata,
+                                    wavelength, new_band_idx)
 
-            flist.append(
-                _merge_band(file_paths, tmp_data, band_idx, metadata,
-                            wavelength, new_band_idx)
-                )
+            logging.info('Band complete... Transferring to store...')
+            _dst = os.path.join(dst, 'DATA', os.path.basename(_new_file))
+            shutil.move(_new_file, _dst)
+            os.chmod(_dst, 0o555)
 
-            # change file permissions to read only
-        [os.chmod(x, 0o555) for x in flist]
-        logging.info('Dataset generation complete. Transferring to store...')
-        shutil.move(tmp_main, dst)
     os.chmod(dst, 0o555)
     logging.info(f'Ingestion of {dataset_name} complete!')
     return dst
