@@ -23,13 +23,16 @@ def get_datasets():
                     for name, val in ds[d].attrs.items():
                         if 'crs' in name.lower():
                             return val
+                raise AttributeError('No CRS found!')
             # first try, look for crs attribute
             try:
-                return pyproj.Transformer.from_crs(ds.crs, "epsg:4326")
+                CRS = ds.attrs['crs']
             # if no CRS, it is likely a NetCDF where the CRS is stored as a
             # data variable
-            except AttributeError:
-                return pyproj.Transformer.from_crs(get_crs_nc(ds), "epsg:4326")
+            except AttributeError, KeyError:
+                CRS = get_crs_nc(ds)
+
+            return pyproj.Transformer.from_crs(CRS, "epsg:4326")
 
 
         transformer = parse_crs(ds.crs)
