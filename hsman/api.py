@@ -85,7 +85,10 @@ def get_datasets():
     new_df = geopandas.pd.concat([gdf, new_df]).reset_index(drop=True)
     # save new file
     try:
-        new_df.to_file(os.path.join(DATA_PATH, '.inventory.gpkg'), driver="GPKG")
+        new_df.to_file(os.path.join(DATA_PATH, '.inventory.gpkg'),
+                       driver="GPKG",
+                       layer='dataset_bounding_boxes'
+                       )
     except:
         print('New database not saved')
     try:
