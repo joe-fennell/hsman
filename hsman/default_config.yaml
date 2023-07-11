@@ -1,27 +1,23 @@
 config_name: default
 # Path to the data write directory
 hsman_data_path: ~/hsman/
-scratch_directory: ['/scratch.local/jf9942/hsman']
+hsman_8bit_path: ~/hsman/
+hsman_wms_path: ~/hsman/
+scratch_directory: ['/tmp/hsman']
 # schema for finding raster data in a 2ExcelGeo directory. Each data type will
 # be ingested into a separate coverage.
 raster_dataset_recipes:
   # files from the Hyspex VNIR 1800
   VNIR_aerial:
     name: VNIR_aerial
-    quality_flag: VNIR_1800_SN00826_preQual_rect
     data_flag: VNIR_1800_SN00826_quac_specPol_rect
     data_suffix: img
-    dtype: uint16
-    tile_size: 4e9
     ingest_type: hsi
   # files from the Hyspex VNIR 1800
   SWIR_aerial:
     name: SWIR_aerial
-    quality_flag: SWIR_384me_SN3104_quac_postQual_rect
     data_flag: SWIR_384me_SN3104_quac_specPol_rect
     data_suffix: img
-    dtype: uint16
-    tile_size: 4e9
     ingest_type: hsi
   # RGB files generated with Correlator3D
   RGB_aerial:

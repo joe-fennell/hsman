@@ -1,4 +1,3 @@
-import folium
 import geopandas
 import os
 import pandas as pd
@@ -17,10 +16,26 @@ def get_datasets():
         """
         Retrieve bounding box in lon/lat
         """
-        def parse_crs(CRS):
-            return pyproj.Transformer.from_crs(ds.crs, "epsg:4326")
 
-        transformer = parse_crs(ds.crs)
+        def parse_crs(ds):
+            def get_crs_nc(ds):
+                for d in ds.data_vars:
+                    for name, val in ds[d].attrs.items():
+                        if 'crs' in name.lower():
+                            return val
+                raise AttributeError('No CRS found!')
+            # first try, look for crs attribute
+            try:
+                CRS = ds.attrs['crs']
+            # if no CRS, it is likely a NetCDF where the CRS is stored as a
+            # data variable
+            except KeyError:
+                CRS = get_crs_nc(ds)
+
+            return pyproj.Transformer.from_crs(CRS, "epsg:4326")
+
+
+        transformer = parse_crs(ds)
         tl = transformer.transform(ds.x.min(), ds.y.max())[::-1]
         tr = transformer.transform(ds.x.max(), ds.y.max())[::-1]
         bl = transformer.transform(ds.x.min(), ds.y.min())[::-1]
@@ -43,7 +58,7 @@ def get_datasets():
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             gdf = geopandas.read_file(os.path.join(DATA_PATH,
-                                                   '_inventory.gpkg'))
+                                                   '.inventory.gpkg'))
         # gdf = gdf.set_index('dataset')
         # filter any names already present in gpkg
         names = [x for x in names if not (gdf.dataset == x).any()]
@@ -69,7 +84,13 @@ def get_datasets():
                                     geometry=bb)
     new_df = geopandas.pd.concat([gdf, new_df]).reset_index(drop=True)
     # save new file
-    new_df.to_file(os.path.join(DATA_PATH, '_inventory.gpkg'), driver="GPKG")
+    try:
+        new_df.to_file(os.path.join(DATA_PATH, '.inventory.gpkg'),
+                       driver="GPKG",
+                       layer='dataset_bounding_boxes'
+                       )
+    except:
+        print('New database not saved')
     try:
         return auto_generate_fields(new_df)
     except:
@@ -94,20 +115,40 @@ def open_dataset(dataset, chunks=None, mode=None):
             return os.path.join(dpath, flist[0])
 
     def open_hsi_dataset(dataset, chunks=None):
-        def add_band_dim(dataset):
-            return dataset.expand_dims('band')
-        # define chunks
-        if chunks is None:
-            chunks = {'band': 1, 'x': 1000, 'y': 1000}
+
+        def read_hsi_v1(flist):
+            # works with original version
+            def add_band_dim(dataset):
+                return dataset.expand_dims('band')
+            # define chunks
+            chunks = {'band': 1, 'x': 10000, 'y': 10000}
+            ds = xarray.open_mfdataset(flist,
+                                       preprocess=add_band_dim,
+                                       chunks=10000)
+            return ds.chunk(chunks)
+
+        def read_hsi_v2(flist):
+            # works with the newer version
+            ds = xarray.open_mfdataset(flist,
+                                       chunks={'band':1, 'y':10000, 'x':10000}
+                                       )
+            ds = ds.assign_coords(
+                {'wavelength': ('band', ds.wavelength.values)}
+                )
+            return ds
+
         flist = get_hsi_path(dataset)
-        ds = xarray.open_mfdataset(flist,
-                                   preprocess=add_band_dim,
-                                   chunks=10000).reflectance
-        return ds.chunk(chunks)
+
+        # try original version first
+        try:
+            return read_hsi_v1(flist)
+        except ValueError:
+            return read_hsi_v2(flist)
+
 
     def open_image(dataset, chunks=None):
         if chunks is None:
-            chunks = {'band': 1, 'x': 1000, 'y': 1000}
+            chunks = {'band': 1, 'x': 10000, 'y': 10000}
         fpath = get_rgb_path(dataset)
         return xarray.open_rasterio(fpath,
                                     chunks=chunks)
@@ -136,8 +177,13 @@ def view_datasets():
     """
     View available datasets on a folium map
     """
+    try:
+        import folium
+    except ModuleNotFoundError:
+        raise RuntimeError("'folium' package must be installed to call this function")
+
     # prepare dataset for plotting
-    dsets = get_datasets().drop('date', 1)
+    dsets = get_datasets().drop(labels='date', axis='columns')
     # dsets.reset_index(inplace=True)
     dsets['dataset_type'] = dsets['dataset'].apply(lambda x: x.split('_')[1])
 

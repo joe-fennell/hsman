@@ -89,11 +89,9 @@ def ingest(directory):
                     recipe_name, mission_name
                 ))
                 coverage_id = scrape.generate_coverage_id(mission_name,
-                                                          recipe_name)
+                                                          recipe['name'])
                 if recipe['ingest_type'] == 'hsi':
-                    _ingest.ingest_hsi(data_files, coverage_id,
-                                       recipe['dtype'],
-                                       float(recipe['tile_size']))
+                    _ingest.ingest_hsi(data_files, coverage_id)
 
                 if recipe['ingest_type'] == 'image':
                     if len(data_files) == 1:
