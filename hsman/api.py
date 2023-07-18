@@ -4,6 +4,7 @@ import pandas as pd
 import pyproj
 import shapely
 import xarray
+import rioxarray
 from .config import DATA_PATH
 import warnings
 
@@ -150,7 +151,7 @@ def open_dataset(dataset, chunks=None, mode=None):
         if chunks is None:
             chunks = {'band': 1, 'x': 10000, 'y': 10000}
         fpath = get_rgb_path(dataset)
-        return xarray.open_rasterio(fpath,
+        return rioxarray.open_rasterio(fpath,
                                     chunks=chunks)
     if mode is None:
         try:
