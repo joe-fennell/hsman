@@ -5,7 +5,7 @@ import os
 import shutil
 import rasterio
 import numpy as np
-import xarray
+import rioxarray
 import functools
 import subprocess
 import datetime
@@ -112,7 +112,7 @@ def _get_common_idx(file_paths):
 
         wlens = []
         for file in file_paths:
-            ar = xarray.open_rasterio(file, cache=False)
+            ar = rioxarray.open_rasterio(file, cache=False)
             try:
                 # usually the wavelength dimension is available
                 wlens.append(ar.wavelength.values)
@@ -149,7 +149,7 @@ def _get_collect_time(file_paths):
 
     dtimes = []
     for fpath in file_paths:
-        attrs = xarray.open_rasterio(fpath, cache=False).attrs
+        attrs = rioxarray.open_rasterio(fpath, cache=False).attrs
         try:
             d = attrs['acquisition_date'].split('-')
         except KeyError:

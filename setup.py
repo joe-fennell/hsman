@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="hsman",
-    version="0.1.7",
+    version="0.1.8",
     author="Joseph T. Fennell",
     author_email="info@joefennell.org",
     description="Hyperspectral Data Manager",
@@ -17,7 +17,6 @@ setuptools.setup(
     package_data={'hsman': ['default_config.yaml']},
     include_package_data=True,
     install_requires=[
-          'xarray',
           'rioxarray',
           'rasterio',
           'boto3',
