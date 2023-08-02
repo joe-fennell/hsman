@@ -312,7 +312,7 @@ def _merge_band(file_paths, dst, band, meta, new_band_wavelength,
     # rename the band
     # Open the NetCDF4 dataset using a context handler
         logging.debug('NetCDF generated:')
-    logging.debug(print(rioxarray.read_rasterio(dst_fpath)))
+    logging.debug(print(rioxarray.open_rasterio(dst_fpath)))
     # logging.debug('Updating variables...')
     # with Dataset(dst_fpath, 'r+') as dataset:
     #     # Rename the variable
