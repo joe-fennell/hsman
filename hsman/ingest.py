@@ -312,29 +312,28 @@ def _merge_band(file_paths, dst, band, meta, new_band_wavelength,
     # rename the band
     # Open the NetCDF4 dataset using a context handler
         logging.debug('NetCDF generated:')
-    logging.debug(print(xarray.read_file(dst_fpath)))
-    
-    logging.debug('Updating variables...')
-    with Dataset(dst_fpath, 'r+') as dataset:
-        # Rename the variable
-        dataset.renameVariable('Band1', 'reflectance')
-
-        # add a new dimension with band
-        reflectance_var = dataset.variables['reflectance']
-
-        # Add the new dimension to the dataset
-        dataset.createDimension('band', 1)
-
-        # Optionally, assign values to the new dimension using the variable's associated coordinate variable
-        coordinate_var1 = dataset.createVariable('band', 'i4', ('band',))
-        coordinate_var2 = dataset.createVariable('wavelength', 'f8', ('band',))
-        coordinate_var1[:] = [new_band_index]
-        coordinate_var2[:] = [new_band_wavelength]
-
-        for k, v in meta.items():
-            reflectance_var.setncattr(k, v)
-
-        # Synchronize changes to the file
-        dataset.sync()
+    logging.debug(print(rioxarray.read_file(dst_fpath)))
+    # logging.debug('Updating variables...')
+    # with Dataset(dst_fpath, 'r+') as dataset:
+    #     # Rename the variable
+    #     dataset.renameVariable('Band1', 'reflectance')
+    #
+    #     # add a new dimension with band
+    #     reflectance_var = dataset.variables['reflectance']
+    #
+    #     # Add the new dimension to the dataset
+    #     dataset.createDimension('band', 1)
+    #
+    #     # Optionally, assign values to the new dimension using the variable's associated coordinate variable
+    #     coordinate_var1 = dataset.createVariable('band', 'i4', ('band',))
+    #     coordinate_var2 = dataset.createVariable('wavelength', 'f8', ('band',))
+    #     coordinate_var1[:] = [new_band_index]
+    #     coordinate_var2[:] = [new_band_wavelength]
+    #
+    #     for k, v in meta.items():
+    #         reflectance_var.setncattr(k, v)
+    #
+    #     # Synchronize changes to the file
+    #     dataset.sync()
 
     return dst_fpath
