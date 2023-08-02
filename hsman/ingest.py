@@ -248,7 +248,7 @@ def _unrotate_hsi(file_paths, dst, band='all'):
                     input_file,
                     output_file1
                 ]
-
+            logging.debug('generating unrotated file {}'.format(output_file1))
             subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
             input_file = output_file1
 
@@ -295,11 +295,11 @@ def _merge_band(file_paths, dst, band, meta, new_band_wavelength,
     if os.path.exists(dst_fpath):
         raise FileExistsError(f'{dst_fpath} already exists!')
 
-
-
     with tempfile.TemporaryDirectory() as temp_dir:
         # rotate files and write to a temp array on disk
+        logging.debug('generating unrotated files..')
         unrotated_file_paths = _unrotate_hsi(file_paths, temp_dir, band)
+        logging.debug('Merging unrotated files into NetCDF..')
         # unrotated_file_paths = file_paths # for testing only
         command = ['gdal_merge.py',
                    '-init', '0',
@@ -311,8 +311,10 @@ def _merge_band(file_paths, dst, band, meta, new_band_wavelength,
         subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
     # rename the band
     # Open the NetCDF4 dataset using a context handler
-
-
+        logging.debug('NetCDF generated:')
+    logging.debug(print(xarray.read_file(dst_fpath)))
+    
+    logging.debug('Updating variables...')
     with Dataset(dst_fpath, 'r+') as dataset:
         # Rename the variable
         dataset.renameVariable('Band1', 'reflectance')
