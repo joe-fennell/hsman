@@ -17,31 +17,12 @@ def get_datasets():
         """
         Retrieve bounding box in lon/lat
         """
-
-        def parse_crs(ds):
-            def get_crs_nc(ds):
-                for d in ds.data_vars:
-                    for name, val in ds[d].attrs.items():
-                        if 'crs' in name.lower():
-                            return val
-                raise AttributeError('No CRS found!')
-            # first try, look for crs attribute
-            try:
-                CRS = ds.attrs['crs']
-            # if no CRS, it is likely a NetCDF where the CRS is stored as a
-            # data variable
-            except KeyError:
-                CRS = get_crs_nc(ds)
-
-            return pyproj.Transformer.from_crs(CRS, "epsg:4326")
-
-
-        transformer = parse_crs(ds)
+        # transformer from imagery projection to lat lon
+        transformer = pyproj.Transformer.from_crs(ds.rio.crs, "epsg:4326")
         tl = transformer.transform(ds.x.min(), ds.y.max())[::-1]
         tr = transformer.transform(ds.x.max(), ds.y.max())[::-1]
         bl = transformer.transform(ds.x.min(), ds.y.min())[::-1]
         br = transformer.transform(ds.x.max(), ds.y.min())[::-1]
-
         return [tl, tr, br, bl, tl]
 
     def auto_generate_fields(ds):
@@ -117,6 +98,25 @@ def open_dataset(dataset, chunks=None, mode=None):
 
     def open_hsi_dataset(dataset, chunks=None):
 
+        def set_crs(ds):
+            try:
+                crs_is_valid = ds.rio.crs.is_valid
+            except: AttributeError:
+                crs_is_valid = False
+
+            # if CRS is valid, return unchanged
+            if crs_is_valid:
+                return ds
+
+            # iterate until a CRS is found
+            for d in ds.data_vars:
+                for name, val in ds[d].attrs.items():
+                    if 'crs' in name.lower():
+                        ds = ds.rio.set_crs(val)
+                        return ds
+
+            raise AttributeError('No CRS found!')
+
         def read_hsi_v1(flist):
             # works with original version
             def add_band_dim(dataset):
@@ -126,6 +126,7 @@ def open_dataset(dataset, chunks=None, mode=None):
             ds = xarray.open_mfdataset(flist,
                                        preprocess=add_band_dim,
                                        chunks=10000)
+            # try to set crs
             return ds.chunk(chunks)
 
         def read_hsi_v2(flist):
@@ -142,9 +143,11 @@ def open_dataset(dataset, chunks=None, mode=None):
 
         # try original version first
         try:
-            return read_hsi_v1(flist)
+            ds = read_hsi_v1(flist)
         except ValueError:
-            return read_hsi_v2(flist)
+            ds = read_hsi_v2(flist)
+
+        return set_crs(ds)
 
 
     def open_image(dataset, chunks=None):
