@@ -101,7 +101,7 @@ def open_dataset(dataset, chunks=None, mode=None):
         def set_crs(ds):
             try:
                 crs_is_valid = ds.rio.crs.is_valid
-            except: AttributeError:
+            except AttributeError:
                 crs_is_valid = False
 
             # if CRS is valid, return unchanged
