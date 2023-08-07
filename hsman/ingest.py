@@ -5,7 +5,7 @@ import os
 import shutil
 import rasterio
 import numpy as np
-import xarray
+import rioxarray
 import functools
 import subprocess
 import datetime
@@ -112,7 +112,7 @@ def _get_common_idx(file_paths):
 
         wlens = []
         for file in file_paths:
-            ar = xarray.open_rasterio(file, cache=False)
+            ar = rioxarray.open_rasterio(file, cache=False)
             try:
                 # usually the wavelength dimension is available
                 wlens.append(ar.wavelength.values)
@@ -149,7 +149,7 @@ def _get_collect_time(file_paths):
 
     dtimes = []
     for fpath in file_paths:
-        attrs = xarray.open_rasterio(fpath, cache=False).attrs
+        attrs = rioxarray.open_rasterio(fpath, cache=False).attrs
         try:
             d = attrs['acquisition_date'].split('-')
         except KeyError:
@@ -248,7 +248,7 @@ def _unrotate_hsi(file_paths, dst, band='all'):
                     input_file,
                     output_file1
                 ]
-
+            logging.debug('generating unrotated file {}'.format(output_file1))
             subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
             input_file = output_file1
 
@@ -295,11 +295,11 @@ def _merge_band(file_paths, dst, band, meta, new_band_wavelength,
     if os.path.exists(dst_fpath):
         raise FileExistsError(f'{dst_fpath} already exists!')
 
-
-
     with tempfile.TemporaryDirectory() as temp_dir:
         # rotate files and write to a temp array on disk
+        logging.debug('generating unrotated files..')
         unrotated_file_paths = _unrotate_hsi(file_paths, temp_dir, band)
+        logging.debug('Merging unrotated files into NetCDF..')
         # unrotated_file_paths = file_paths # for testing only
         command = ['gdal_merge.py',
                    '-init', '0',
@@ -311,8 +311,9 @@ def _merge_band(file_paths, dst, band, meta, new_band_wavelength,
         subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
     # rename the band
     # Open the NetCDF4 dataset using a context handler
-
-
+        logging.debug('NetCDF generated:')
+        # logging.debug(print(rioxarray.open_rasterio(dst_fpath)))
+    logging.debug('Updating variables...')
     with Dataset(dst_fpath, 'r+') as dataset:
         # Rename the variable
         dataset.renameVariable('Band1', 'reflectance')
